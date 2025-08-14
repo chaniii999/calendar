@@ -1,16 +1,13 @@
-package com.example.app.entity;
+package com.calendar.app.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Collection;
+import java.util.List;
 
 @Builder
 @Getter @Setter
@@ -37,6 +34,11 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // UserDetails 구현 메서드
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(() -> "ROLE_USER");
+    }
+
     @PrePersist
     public void prePersist() {
         if (this.id == null) {
@@ -50,7 +52,6 @@ public class User {
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
 
 
 }
