@@ -1,5 +1,6 @@
 package com.calendar.app.service;
 
+import com.calendar.app.dto.auth.LoginResponseDto;
 import com.calendar.app.dto.auth.TokenDto;
 import com.calendar.app.entity.RefreshToken;
 import com.calendar.app.entity.User;
