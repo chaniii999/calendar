@@ -42,10 +42,6 @@ import java.util.List;
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.status = 'POSTPONED' ORDER BY s.scheduleDate ASC")
     List<Schedule> findPostponedSchedulesByUser(@Param("user") User user);
 
-    // 사용자의 특정 주제 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.topic.id = :topicId ORDER BY s.scheduleDate DESC")
-    List<Schedule> findByUserAndTopicId(@Param("user") User user, @Param("topicId") String topicId);
-
     // 오늘의 스케줄 조회
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate = CURRENT_DATE ORDER BY s.startTime")
     List<Schedule> findTodaySchedules(@Param("user") User user);
