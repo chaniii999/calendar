@@ -1,4 +1,4 @@
-package com.example.app.entity;
+package com.calendar.app.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
