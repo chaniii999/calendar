@@ -5,7 +5,6 @@ import com.calendar.app.entity.User;
 import com.calendar.app.repository.RefreshTokenRepository;
 import com.calendar.app.repository.UserRepository;
 import com.calendar.app.service.JwtTokenProvider;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
