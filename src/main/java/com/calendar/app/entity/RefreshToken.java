@@ -34,11 +34,10 @@ public class RefreshToken {
             columnDefinition = "timestamp default current_timestamp")
     private LocalDateTime createdAt;
 
-    public RefreshToken(Object o, String email, String refresh) {
-
-        this.key = email; // o는 User 객체로 가정, email 필드 사용
-        this.value = refresh; // refresh JWT 값
-        this.createdAt = LocalDateTime.now(); // 생성 시점 설정
+    public RefreshToken(String email, String refresh) {
+        this.key = email;
+        this.value = refresh;
+        this.createdAt = LocalDateTime.now();
     }
 
     @PrePersist
