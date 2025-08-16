@@ -63,6 +63,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        // OAuth2 관련 엔드포인트 허용
+                        .requestMatchers("/oauth2/**").permitAll()
+                        .requestMatchers("/login/**").permitAll()
                         // 테스트 API 허용
                         .requestMatchers(HttpMethod.GET, "/api/timer/test-stats").permitAll()
                         // WebSocket 엔드포인트 허용
