@@ -64,6 +64,8 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private boolean isPermittedPath(String requestURI) {
         return requestURI.startsWith("/api/auth/") ||
+                requestURI.startsWith("/oauth2/") ||
+                requestURI.startsWith("/login/") ||
                 requestURI.startsWith("/swagger-ui/") ||
                 requestURI.startsWith("/v3/api-docs/") ||
                 requestURI.startsWith("/actuator/");
