@@ -18,7 +18,6 @@ public class ScheduleResponse {
     // === 기본 정보 ===
     private String id;
     private String title;
-    private String subtitle;
     private String description;
     private String color;
 
@@ -30,13 +29,6 @@ public class ScheduleResponse {
     private boolean isRecurring;
     private String recurrenceRule;
 
-    // === 학습 관련 정보 ===
-    private String studyMode;
-    private Integer plannedStudyMinutes;
-    private Integer plannedBreakMinutes;
-    private String studyGoal;
-    private String difficulty;
-
     // === 상태 정보 ===
     private Schedule.ScheduleStatus status;
     private Integer completionRate;
@@ -45,13 +37,6 @@ public class ScheduleResponse {
     // === 알림 설정 ===
     private Integer reminderMinutes;
     private boolean isReminderEnabled;
-
-
-    // === 학습 통계 ===
-    private Integer totalStudyTime; // 총 학습 시간 (초)
-    private Integer totalRestTime; // 총 휴식 시간 (초)
-    private Integer actualStudyMinutes; // 실제 학습 시간 (분)
-    private Integer actualRestMinutes; // 실제 휴식 시간 (분)
 
     // === 메타데이터 ===
     private LocalDateTime createdAt;

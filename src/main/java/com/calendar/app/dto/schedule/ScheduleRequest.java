@@ -15,7 +15,6 @@ import java.time.LocalTime;
 public class ScheduleRequest {
     // === 기본 일정 정보 ===
     private String title; // 일정 제목
-    private String subtitle; // 일정 소제목
     private String description; // 일정 설명
     private String color; // 캘린더 표시 색상
 
@@ -26,13 +25,6 @@ public class ScheduleRequest {
     private Boolean isAllDay; // 종일 일정 여부
     private Boolean isRecurring; // 반복 일정 여부
     private String recurrenceRule; // 반복 규칙
-
-    // === 학습 관련 정보 ===
-    private String studyMode; // 학습 모드
-    private Integer plannedStudyMinutes; // 계획된 학습 시간 (분)
-    private Integer plannedBreakMinutes; // 계획된 휴식 시간 (분)
-    private String studyGoal; // 학습 목표
-    private String difficulty; // 예상 난이도
 
     // === 알림 설정 ===
     private Integer reminderMinutes; // 알림 시간 (분 전)
