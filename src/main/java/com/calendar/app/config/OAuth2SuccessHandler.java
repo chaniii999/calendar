@@ -1,10 +1,9 @@
 package com.calendar.app.config;
 
-import com.calendar.app.entity.RefreshToken;
 import com.calendar.app.entity.User;
-import com.calendar.app.repository.RefreshTokenRepository;
 import com.calendar.app.repository.UserRepository;
 import com.calendar.app.service.JwtTokenProvider;
+import com.calendar.app.service.RedisService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,8 +21,8 @@ import java.nio.charset.StandardCharsets;
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RedisService redisService;
     private final JwtProperties jwtProps;
 
     @Value("${frontend.success-redirect}")
@@ -45,11 +44,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String access = jwtTokenProvider.createAccessToken(email);
         String refresh = jwtTokenProvider.createRefreshToken(email);
 
-        // 기존 refresh 제거 → 신규 저장
-        refreshTokenRepository.findByKey(email).ifPresent(refreshTokenRepository::delete);
-        refreshTokenRepository.save(
-                new RefreshToken(null, email, refresh) // 엔티티 생성자/빌더에 맞게 수정
-        );
+        // Redis에 refresh token 저장
+        redisService.saveRefreshToken(email, refresh, jwtTokenProvider.getRefreshTokenExpirationTime());
 
 
         try {
