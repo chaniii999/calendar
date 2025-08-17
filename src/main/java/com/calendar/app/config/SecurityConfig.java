@@ -70,8 +70,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/timer/test-stats").permitAll()
                         // WebSocket 엔드포인트 허용
                         .requestMatchers("/ws-timer/**").permitAll()
-                        // Swagger UI 허용
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        // Swagger UI 허용 (개발 환경)
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", 
+                                       "/swagger-resources/**", "/webjars/**", "/error").permitAll()
                         // 헬스체크 엔드포인트 허용
                         .requestMatchers("/actuator/**").permitAll()
                         // 그 외는 인증 필요

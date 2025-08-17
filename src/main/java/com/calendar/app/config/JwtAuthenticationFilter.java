@@ -26,12 +26,6 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String requestURI = request.getRequestURI();
 
-        // 인증이 필요 없는 경로는 필터를 건너뜀
-        if (isPermittedPath(requestURI)) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         try {
             String token = resolveToken(request);
 
@@ -62,12 +56,5 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    private boolean isPermittedPath(String requestURI) {
-        return requestURI.startsWith("/api/auth/") ||
-                requestURI.startsWith("/oauth2/") ||
-                requestURI.startsWith("/login/") ||
-                requestURI.startsWith("/swagger-ui/") ||
-                requestURI.startsWith("/v3/api-docs/") ||
-                requestURI.startsWith("/actuator/");
-    }
+
 }
