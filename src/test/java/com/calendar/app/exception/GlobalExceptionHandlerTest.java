@@ -1,6 +1,6 @@
 package com.calendar.app.exception;
 
-import com.calendar.app.dto.ApiResponse;
+import com.calendar.app.dto.CommonResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ class GlobalExceptionHandlerTest {
         IllegalArgumentException exception = new IllegalArgumentException("잘못된 인수입니다");
 
         // when
-        ResponseEntity<ApiResponse> response = exceptionHandler.handleIllegalArgument(exception);
+        ResponseEntity<CommonResponse> response = exceptionHandler.handleIllegalArgument(exception);
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -41,7 +41,7 @@ class GlobalExceptionHandlerTest {
         ScheduleNotFoundException exception = new ScheduleNotFoundException("스케줄을 찾을 수 없습니다");
 
         // when
-        ResponseEntity<ApiResponse> response = exceptionHandler.handleScheduleNotFound(exception);
+        ResponseEntity<CommonResponse> response = exceptionHandler.handleScheduleNotFound(exception);
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -57,7 +57,7 @@ class GlobalExceptionHandlerTest {
         UnauthorizedAccessException exception = new UnauthorizedAccessException("권한이 없습니다");
 
         // when
-        ResponseEntity<ApiResponse> response = exceptionHandler.handleUnauthorizedAccess(exception);
+        ResponseEntity<CommonResponse> response = exceptionHandler.handleUnauthorizedAccess(exception);
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
@@ -73,7 +73,7 @@ class GlobalExceptionHandlerTest {
         InvalidCompletionRateException exception = new InvalidCompletionRateException("완료율이 유효하지 않습니다");
 
         // when
-        ResponseEntity<ApiResponse> response = exceptionHandler.handleInvalidCompletionRate(exception);
+        ResponseEntity<CommonResponse> response = exceptionHandler.handleInvalidCompletionRate(exception);
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
@@ -89,7 +89,7 @@ class GlobalExceptionHandlerTest {
         InvalidTokenException exception = new InvalidTokenException("유효하지 않은 토큰입니다");
 
         // when
-        ResponseEntity<ApiResponse> response = exceptionHandler.handleInvalidToken(exception);
+        ResponseEntity<CommonResponse> response = exceptionHandler.handleInvalidToken(exception);
 
         // then
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
