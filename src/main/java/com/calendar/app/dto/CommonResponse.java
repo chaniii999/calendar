@@ -9,23 +9,23 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @Schema(description = "API 응답 공통 형식")
-public class ApiResponse<T> {
+public class CommonResponse<T> {
     private boolean success;
     private String message;
     private T data;
 
-    public ApiResponse(boolean success, String message) {
+    public CommonResponse(boolean success, String message) {
         this.success = success;
         this.message = message;
         this.data = null;
     }
 
     // 팩토리 메서드 추가
-    public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(true, "OK", data);
+    public static <T> CommonResponse<T> success(T data) {
+        return new CommonResponse<>(true, "OK", data);
     }
 
-    public static <T> ApiResponse<T> fail(String message) {
-        return new ApiResponse<>(false, message);
+    public static <T> CommonResponse<T> fail(String message) {
+        return new CommonResponse<>(false, message);
     }
 }
