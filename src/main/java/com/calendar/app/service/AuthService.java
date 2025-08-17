@@ -6,12 +6,8 @@ import com.calendar.app.exception.InvalidTokenException;
 import com.calendar.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final StringRedisTemplate redisTemplate;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisService redisService;
 
@@ -54,6 +49,8 @@ public class AuthService {
         return TokenDto.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
+                .tokenType("Bearer")
+                .accessTokenExpiresIn(jwtTokenProvider.getAccessTokenExpirationTime())
                 .build();
     }
 }

@@ -1,92 +1,73 @@
 package com.calendar.app.controller;
 
-import com.calendar.app.config.JwtProperties;
-import com.calendar.app.entity.RefreshToken;
-import com.calendar.app.repository.RefreshTokenRepository;
-import com.calendar.app.service.JwtTokenProvider;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import com.calendar.app.dto.CommonResponse;
+import com.calendar.app.dto.auth.RefreshTokenRequest;
+import com.calendar.app.dto.auth.TokenDto;
+import com.calendar.app.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
+@Tag(name = "인증", description = "OAuth2 로그인 및 토큰 관리 API")
 public class AuthController {
 
-    private final JwtTokenProvider jwtTokenProvider;
-    private final JwtProperties jwtProps;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final AuthService authService;
 
-    // 프런트에서 이 URL 호출 → Security가 /oauth2/authorization/google 로 리다이렉트
+    @Operation(
+        summary = "Google OAuth 로그인",
+        description = "Google OAuth2 로그인을 시작합니다. 프론트엔드에서 이 URL을 호출하면 Google 로그인 페이지로 리다이렉트됩니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "302", description = "Google 로그인 페이지로 리다이렉트"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    })
     @GetMapping("/login/google")
-    public void login() { /* Security에서 처리 */ }
+    public void login() { 
+        /* Security에서 처리 */ 
+    }
 
+    @Operation(
+        summary = "서버 상태 확인",
+        description = "서버가 정상적으로 동작하는지 확인합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "서버 정상 동작",
+            content = @Content(examples = @ExampleObject(value = "{\"ok\": true}")))
+    })
     @GetMapping("/status")
-    public Map<String, Object> status() { return Map.of("ok", true); }
+    public Map<String, Object> status() { 
+        return Map.of("ok", true); 
+    }
 
+    @Operation(
+        summary = "토큰 갱신",
+        description = "Refresh Token을 사용하여 새로운 Access Token을 발급받습니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "토큰 갱신 성공",
+            content = @Content(schema = @Schema(implementation = CommonResponse.class))),
+        @ApiResponse(responseCode = "401", description = "유효하지 않은 Refresh Token"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 형식")
+    })
     @PostMapping("/refresh")
-    public Map<String, Object> refresh(HttpServletRequest req, HttpServletResponse res) {
-        String refresh = readCookie(req, jwtProps.getCookie().getRefresh());
-        if (!StringUtils.hasText(refresh)) throw new IllegalArgumentException("refresh token not found");
-
-        String email = jwtTokenProvider.getSubject(refresh);
-
-        // 저장된 refresh 토큰과 일치 확인(토큰 도난 방지)
-        RefreshToken rt = refreshTokenRepository.findByKey(email)
-                .orElseThrow(() -> new IllegalArgumentException("refresh not found"));
-        if (!refresh.equals(rt.getValue())) throw new IllegalArgumentException("invalid refresh");
-
-        String access = jwtTokenProvider.createAccessToken(email);
-        addCookie(res, jwtProps.getCookie().getAccess(), access, (int) jwtProps.getAccessValidSeconds());
-        return Map.of("accessToken", "rotated");
-    }
-
-    @PostMapping("/logout")
-    public Map<String, Object> logout(HttpServletRequest req, HttpServletResponse res) {
-        String refresh = readCookie(req, jwtProps.getCookie().getRefresh());
-        if (StringUtils.hasText(refresh)) {
-            try {
-                String email = jwtTokenProvider.getSubject(refresh);
-                refreshTokenRepository.findByKey(email)
-                        .ifPresent(refreshTokenRepository::delete);
-            } catch (Exception ignored) {}
-        }
-        // 쿠키 삭제
-        clearCookie(res, jwtProps.getCookie().getAccess());
-        clearCookie(res, jwtProps.getCookie().getRefresh());
-        return Map.of("ok", true);
-    }
-
-    private String readCookie(HttpServletRequest req, String name) {
-        if (req.getCookies() == null) return null;
-        return Arrays.stream(req.getCookies())
-                .filter(c -> name.equals(c.getName()))
-                .findFirst().map(Cookie::getValue).orElse(null);
-    }
-
-    private void addCookie(HttpServletResponse res, String name, String value, int maxAge) {
-        // SameSite/Domain/Secure 설정은 SuccessHandler와 동일하게 헤더로 세팅
-        res.addHeader("Set-Cookie",
-                name + "=" + value
-                        + "; Path=/"
-                        + "; Max-Age=" + maxAge
-                        + "; HttpOnly"
-                        + (jwtProps.getCookie().isSecure() ? "; Secure" : "")
-                        + (jwtProps.getCookie().getSameSite() != null ? "; SameSite=" + jwtProps.getCookie().getSameSite() : "")
-                        + (jwtProps.getCookie().getDomain() != null ? "; Domain=" + jwtProps.getCookie().getDomain() : ""));
-    }
-
-    private void clearCookie(HttpServletResponse res, String name) {
-        res.addHeader("Set-Cookie",
-                name + "=; Path=/; Max-Age=0; HttpOnly"
-                        + (jwtProps.getCookie().isSecure() ? "; Secure" : "")
-                        + (jwtProps.getCookie().getSameSite() != null ? "; SameSite=" + jwtProps.getCookie().getSameSite() : "")
-                        + (jwtProps.getCookie().getDomain() != null ? "; Domain=" + jwtProps.getCookie().getDomain() : ""));
+    public CommonResponse<?> refreshToken(
+        @Parameter(description = "Refresh Token 정보", required = true)
+        @Valid @RequestBody RefreshTokenRequest request
+    ) {
+        TokenDto tokenDto = authService.refreshToken(request.getRefreshToken());
+        return new CommonResponse<>(true, "토큰이 성공적으로 갱신되었습니다.", tokenDto);
     }
 }

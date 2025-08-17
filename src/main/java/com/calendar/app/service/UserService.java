@@ -2,9 +2,7 @@ package com.calendar.app.service;
 
 import com.calendar.app.dto.auth.LoginResponseDto;
 import com.calendar.app.dto.auth.TokenDto;
-import com.calendar.app.entity.RefreshToken;
 import com.calendar.app.entity.User;
-import com.calendar.app.repository.RefreshTokenRepository;
 import com.calendar.app.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -25,8 +23,8 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RedisService redisService;
 
     /**
      * OIDC 프로필로 사용자 Upsert (회원가입/프로필 동기화)
@@ -64,7 +62,7 @@ public class UserService {
     /**
      * OIDC 로그인: Upsert 후 Access/Refresh 발급 + Refresh 저장
      * - Access: FE에서 Authorization 헤더로 사용
-     * - Refresh: DB에 저장(쿠키는 Controller에서 HttpOnly로 세팅)
+     * - Refresh: Redis에 저장(쿠키는 Controller에서 HttpOnly로 세팅)
      */
     @Transactional
     public LoginResponseDto loginWithOidc(OidcUser oidcUser) {
@@ -73,15 +71,9 @@ public class UserService {
         String accessToken  = jwtTokenProvider.createAccessToken(user.getEmail());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getEmail());
 
-        // 기존 Refresh 제거 후 신규 저장
-        refreshTokenRepository.findByKey(user.getEmail())
-                .ifPresent(refreshTokenRepository::delete);
-
-        RefreshToken rt = RefreshToken.builder()
-                .key(user.getEmail())
-                .value(refreshToken)
-                .build();
-        refreshTokenRepository.save(rt);
+        // Redis에 Refresh Token 저장
+        redisService.saveRefreshToken(user.getEmail(), refreshToken, 
+                jwtTokenProvider.getRefreshTokenExpirationTime());
 
         TokenDto tokenDto = TokenDto.builder()
                 .tokenType("Bearer")
