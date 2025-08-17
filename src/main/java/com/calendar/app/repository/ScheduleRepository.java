@@ -30,39 +30,20 @@ import java.util.List;
     // 사용자의 모든 스케줄 조회 (최신순)
     List<Schedule> findByUserOrderByScheduleDateDescStartTimeAsc(User user);
 
-    // 사용자의 완료된 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.status = 'COMPLETED' ORDER BY s.scheduleDate DESC")
-    List<Schedule> findCompletedSchedulesByUser(@Param("user") User user);
-
-    // 사용자의 진행 중인 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.status = 'IN_PROGRESS' ORDER BY s.scheduleDate ASC")
-    List<Schedule> findInProgressSchedulesByUser(@Param("user") User user);
-
-    // 사용자의 연기된 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.status = 'POSTPONED' ORDER BY s.scheduleDate ASC")
-    List<Schedule> findPostponedSchedulesByUser(@Param("user") User user);
+        // 이번 주 스케줄 조회
+        @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :weekStart AND :weekEnd ORDER BY s.scheduleDate, s.startTime")
+        List<Schedule> findThisWeekSchedules(@Param("user") User user,
+                                             @Param("weekStart") LocalDate weekStart,
+                                             @Param("weekEnd") LocalDate weekEnd);
+    
+        // 이번 달 스케줄 조회
+        @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :monthStart AND :monthEnd ORDER BY s.scheduleDate, s.startTime")
+        List<Schedule> findThisMonthSchedules(@Param("user") User user,
+                                              @Param("monthStart") LocalDate monthStart,
+                                              @Param("monthEnd") LocalDate monthEnd);
+    
 
     // 오늘의 스케줄 조회
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate = CURRENT_DATE ORDER BY s.startTime")
     List<Schedule> findTodaySchedules(@Param("user") User user);
-
-    // 이번 주 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :weekStart AND :weekEnd ORDER BY s.scheduleDate, s.startTime")
-    List<Schedule> findThisWeekSchedules(@Param("user") User user,
-                                         @Param("weekStart") LocalDate weekStart,
-                                         @Param("weekEnd") LocalDate weekEnd);
-
-    // 이번 달 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :monthStart AND :monthEnd ORDER BY s.scheduleDate, s.startTime")
-    List<Schedule> findThisMonthSchedules(@Param("user") User user,
-                                          @Param("monthStart") LocalDate monthStart,
-                                          @Param("monthEnd") LocalDate monthEnd);
-
-    // 알림이 설정된 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.isReminderEnabled = true AND s.scheduleDate >= CURRENT_DATE ORDER BY s.scheduleDate, s.startTime")
-    List<Schedule> findSchedulesWithReminders(@Param("user") User user);
-
-    // 반복 스케줄 조회
-    @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.isRecurring = true ORDER BY s.scheduleDate")
-    List<Schedule> findRecurringSchedules(@Param("user") User user);
 }

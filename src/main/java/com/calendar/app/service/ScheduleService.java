@@ -5,6 +5,9 @@ import com.calendar.app.dto.schedule.ScheduleRequest;
 import com.calendar.app.dto.schedule.ScheduleResponse;
 import com.calendar.app.entity.Schedule;
 import com.calendar.app.entity.User;
+import com.calendar.app.exception.InvalidCompletionRateException;
+import com.calendar.app.exception.ScheduleNotFoundException;
+import com.calendar.app.exception.UnauthorizedAccessException;
 import com.calendar.app.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +23,18 @@ import java.util.stream.Collectors;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+
+    // 공통 권한 검증 메서드
+    private Schedule validateScheduleOwnership(User user, String scheduleId) {
+        Schedule schedule = scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new ScheduleNotFoundException("스케줄을 찾을 수 없습니다: " + scheduleId));
+
+        if (!schedule.getUser().getId().equals(user.getId())) {
+            throw new UnauthorizedAccessException("해당 스케줄에 접근할 권한이 없습니다.");
+        }
+
+        return schedule;
+    }
 
     // === CRUD 작업 ===
 
@@ -55,17 +70,7 @@ public class ScheduleService {
     @Transactional(readOnly = true)
     public ScheduleResponse getSchedule(User user, String scheduleId) {
         log.info("스케줄 조회 요청 - 사용자: {}, 스케줄 ID: {}", user.getNickname(), scheduleId);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("스케줄을 찾을 수 없습니다: " + scheduleId));
-
-        // 권한 확인
-        if (!schedule.getUser().getId().equals(user.getId())) {
-            log.warn("권한 없는 스케줄 접근 시도 - 사용자: {}, 스케줄 소유자: {}, 스케줄 ID: {}",
-                    user.getId(), schedule.getUser().getId(), scheduleId);
-            throw new RuntimeException("해당 스케줄에 접근할 권한이 없습니다.");
-        }
-
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
         return ScheduleResponse.from(schedule);
     }
 
@@ -73,14 +78,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse updateSchedule(User user, String scheduleId, ScheduleRequest request) {
         log.info("스케줄 수정 요청 - 사용자: {}, 스케줄 ID: {}", user.getNickname(), scheduleId);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("스케줄을 찾을 수 없습니다: " + scheduleId));
-
-        // 권한 확인
-        if (!schedule.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("해당 스케줄을 수정할 권한이 없습니다.");
-        }
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
 
 
         // 스케줄 정보 업데이트
@@ -106,14 +104,7 @@ public class ScheduleService {
     @Transactional
     public void deleteSchedule(User user, String scheduleId) {
         log.info("스케줄 삭제 요청 - 사용자: {}, 스케줄 ID: {}", user.getNickname(), scheduleId);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("스케줄을 찾을 수 없습니다: " + scheduleId));
-
-        // 권한 확인
-        if (!schedule.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("해당 스케줄을 삭제할 권한이 없습니다.");
-        }
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
 
         scheduleRepository.delete(schedule);
         log.info("스케줄 삭제 완료 - ID: {}", scheduleId);
@@ -169,22 +160,16 @@ public class ScheduleService {
     @Transactional(readOnly = true)
     public List<ScheduleResponse> getCompletedSchedules(User user) {
         log.info("완료된 스케줄 조회 요청 - 사용자: {}", user.getNickname());
-
-        List<Schedule> schedules = scheduleRepository.findCompletedSchedulesByUser(user);
-        return schedules.stream()
-                .map(ScheduleResponse::from)
-                .collect(Collectors.toList());
+        List<Schedule> schedules = scheduleRepository.findByUserAndStatusOrderByScheduleDateDesc(user, Schedule.ScheduleStatus.COMPLETED);
+        return schedules.stream().map(ScheduleResponse::from).collect(Collectors.toList());
     }
 
     // 진행 중인 스케줄 조회
     @Transactional(readOnly = true)
     public List<ScheduleResponse> getInProgressSchedules(User user) {
         log.info("진행 중인 스케줄 조회 요청 - 사용자: {}", user.getNickname());
-
-        List<Schedule> schedules = scheduleRepository.findInProgressSchedulesByUser(user);
-        return schedules.stream()
-                .map(ScheduleResponse::from)
-                .collect(Collectors.toList());
+        List<Schedule> schedules = scheduleRepository.findByUserAndStatusOrderByScheduleDateDesc(user, Schedule.ScheduleStatus.IN_PROGRESS);
+        return schedules.stream().map(ScheduleResponse::from).collect(Collectors.toList());
     }
 
     // === 상태 관리 ===
@@ -193,14 +178,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse updateScheduleStatus(User user, String scheduleId, Schedule.ScheduleStatus status) {
         log.info("스케줄 상태 변경 요청 - 사용자: {}, 스케줄 ID: {}, 상태: {}", user.getNickname(), scheduleId, status);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("스케줄을 찾을 수 없습니다: " + scheduleId));
-
-        // 권한 확인
-        if (!schedule.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("해당 스케줄을 수정할 권한이 없습니다.");
-        }
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
 
         schedule.setStatus(status);
 
@@ -219,18 +197,11 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse updateCompletionRate(User user, String scheduleId, Integer completionRate) {
         log.info("완료율 업데이트 요청 - 사용자: {}, 스케줄 ID: {}, 완료율: {}%", user.getNickname(), scheduleId, completionRate);
-
-        Schedule schedule = scheduleRepository.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("스케줄을 찾을 수 없습니다: " + scheduleId));
-
-        // 권한 확인
-        if (!schedule.getUser().getId().equals(user.getId())) {
-            throw new RuntimeException("해당 스케줄을 수정할 권한이 없습니다.");
-        }
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
 
         // 완료율 범위 검증 (0-100)
         if (completionRate < 0 || completionRate > 100) {
-            throw new RuntimeException("완료율은 0에서 100 사이의 값이어야 합니다.");
+            throw new InvalidCompletionRateException("완료율은 0에서 100 사이의 값이어야 합니다.");
         }
 
         schedule.setCompletionRate(completionRate);
