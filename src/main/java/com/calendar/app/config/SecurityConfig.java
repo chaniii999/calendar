@@ -27,11 +27,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:19006", // Expo 웹
-                "http://localhost:8081",   // Expo Go
-                "http://127.0.0.1:19006",
-                "http://192.168.0.7:19006", // 실제 모바일/웹 주소 추가
-                "http://192.168.0.7:8081"   // 실제 Expo Go 주소 추가
+                "http://localhost:5173",   // Vite Dev (Frontend)
+                "http://127.0.0.1:5173"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
@@ -59,12 +56,14 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // OAuth2 로그인에 필요한 경우 세션 사용
                 .authorizeHttpRequests(auth -> auth
                         // 인증 관련 엔드포인트는 모두 허용
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/sign-in").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/sign-up").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/login/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/status").permitAll()
                         // OAuth2 관련 엔드포인트 허용
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/**").permitAll()
