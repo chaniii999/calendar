@@ -21,6 +21,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
@@ -55,7 +56,7 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 활성화
                 .csrf(AbstractHttpConfigurer::disable) // POST 요청 허용을 위해 CSRF 비활성화
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 세션 사용 안함
+                        .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // OAuth2 로그인에 필요한 경우 세션 사용
                 .authorizeHttpRequests(auth -> auth
                         // 인증 관련 엔드포인트는 모두 허용
                         .requestMatchers(HttpMethod.POST, "/api/auth/sign-in").permitAll()
@@ -63,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/send-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/verify-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/login/**").permitAll()
                         // OAuth2 관련 엔드포인트 허용
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/**").permitAll()
@@ -77,6 +79,9 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         // 그 외는 인증 필요
                         .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth -> oauth
+                        .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
 

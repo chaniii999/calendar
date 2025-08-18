@@ -23,7 +23,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisService redisService;
-    private final JwtProperties jwtProps;
 
     @Value("${frontend.success-redirect}")
     private String successRedirect;
@@ -35,7 +34,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String name  = oidc.getFullName();
 
         // upsert
-        User user = userRepository.findByEmail(email)
+        userRepository.findByEmail(email)
                 .map(u -> { if (name != null && !name.isBlank()) u.setNickname(name); return u; })
                 .orElseGet(() -> userRepository.save(User.builder()
                         .email(email).nickname(name != null && !name.isBlank() ? name : email).build()));
@@ -50,7 +49,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         try {
             String nameParam = name != null ? URLEncoder.encode(name, StandardCharsets.UTF_8) : "";
-            res.sendRedirect(successRedirect + "?u=" + nameParam);
+            String accessParam = URLEncoder.encode(access, StandardCharsets.UTF_8);
+            String refreshParam = URLEncoder.encode(refresh, StandardCharsets.UTF_8);
+            String redirectUrl = successRedirect + "?accessToken=" + accessParam + "&refreshToken=" + refreshParam + "&u=" + nameParam;
+            res.sendRedirect(redirectUrl);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
