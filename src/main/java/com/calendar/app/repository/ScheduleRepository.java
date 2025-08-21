@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Repository
@@ -46,4 +47,8 @@ import java.util.List;
     // 오늘의 스케줄 조회
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate = CURRENT_DATE ORDER BY s.startTime")
     List<Schedule> findTodaySchedules(@Param("user") User user);
+
+    // 알림 후보 스케줄 조회: 오늘 날짜, 시작시간 존재, 알림 활성, 미발송
+    @Query("SELECT s FROM Schedule s WHERE s.isReminderEnabled = true AND s.reminded = false AND s.scheduleDate = :today AND s.startTime IS NOT NULL")
+    List<Schedule> findPendingReminderCandidates(@Param("today") LocalDate today);
 }

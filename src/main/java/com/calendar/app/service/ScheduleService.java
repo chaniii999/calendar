@@ -85,6 +85,10 @@ public class ScheduleService {
         schedule.setTitle(request.getTitle());
         schedule.setDescription(request.getDescription());
         schedule.setColor(request.getColor());
+        LocalDate oldDate = schedule.getScheduleDate();
+        java.time.LocalTime oldStart = schedule.getStartTime();
+        Boolean oldEnabled = schedule.isReminderEnabled();
+
         schedule.setScheduleDate(request.getScheduleDate());
         schedule.setStartTime(request.getStartTime());
         schedule.setEndTime(request.getEndTime());
@@ -93,6 +97,13 @@ public class ScheduleService {
         schedule.setRecurrenceRule(request.getRecurrenceRule());
         schedule.setReminderMinutes(request.getReminderMinutes());
         schedule.setReminderEnabled(request.getIsReminderEnabled() != null ? request.getIsReminderEnabled() : true);
+
+        // 알림 관련 변경이 있으면 reminded 초기화
+        if (!java.util.Objects.equals(oldDate, schedule.getScheduleDate())
+                || !java.util.Objects.equals(oldStart, schedule.getStartTime())
+                || !java.util.Objects.equals(oldEnabled, schedule.isReminderEnabled())) {
+            schedule.setReminded(false);
+        }
 
         Schedule updatedSchedule = scheduleRepository.save(schedule);
         log.info("스케줄 수정 완료 - ID: {}", updatedSchedule.getId());

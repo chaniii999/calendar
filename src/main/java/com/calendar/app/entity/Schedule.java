@@ -81,6 +81,10 @@ public class Schedule {
     @Builder.Default
     private boolean isReminderEnabled = true; // 알림 활성화 여부
 
+    @Column(name = "reminded", nullable = false)
+    @Builder.Default
+    private boolean reminded = false; // 시작 시점 알림 발송 완료 여부
+
 
     // === 메타데이터 ===
     @Column(name = "created_at", nullable = false, updatable = false)

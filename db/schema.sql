@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS schedules (
   completion_rate INT NULL,
   reminder_minutes INT NULL,
   is_reminder_enabled BIT(1) NOT NULL,
+  reminded BIT(1) NOT NULL DEFAULT b'0',
   created_at DATETIME(6) NOT NULL,
   updated_at DATETIME(6) NULL,
   CONSTRAINT fk_schedules_users FOREIGN KEY (user_id) REFERENCES users(id)
