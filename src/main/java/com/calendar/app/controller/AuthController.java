@@ -4,6 +4,8 @@ import com.calendar.app.dto.CommonResponse;
 import com.calendar.app.dto.auth.RefreshTokenRequest;
 import com.calendar.app.dto.auth.TokenDto;
 import com.calendar.app.service.AuthService;
+import com.calendar.app.service.JwtTokenProvider;
+import com.calendar.app.service.RedisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +18,9 @@ import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -27,6 +32,11 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final RedisService redisService;
+
+    @Value("${frontend.success-redirect}")
+    private String successRedirect;
 
     @Operation(
         summary = "Google OAuth 로그인",
@@ -37,7 +47,24 @@ public class AuthController {
         @ApiResponse(responseCode = "400", description = "잘못된 요청")
     })
     @GetMapping("/login/google")
-    public void login(HttpServletResponse response) throws IOException {
+    public void login(HttpServletResponse response, Authentication authentication) throws IOException {
+        // 이미 OIDC 인증된 세션이면 재인증 루프 방지: 바로 토큰 발급 후 프론트로 리다이렉트
+        if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof OidcUser oidc) {
+            String email = oidc.getEmail();
+            String name = oidc.getFullName();
+
+            String access = jwtTokenProvider.createAccessToken(email);
+            String refresh = jwtTokenProvider.createRefreshToken(email);
+            redisService.saveRefreshToken(email, refresh, jwtTokenProvider.getRefreshTokenExpirationTime());
+
+            String nameParam = name != null ? java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8) : "";
+            String accessParam = java.net.URLEncoder.encode(access, java.nio.charset.StandardCharsets.UTF_8);
+            String refreshParam = java.net.URLEncoder.encode(refresh, java.nio.charset.StandardCharsets.UTF_8);
+            String redirectUrl = successRedirect + "?accessToken=" + accessParam + "&refreshToken=" + refreshParam + "&u=" + nameParam;
+            response.sendRedirect(redirectUrl);
+            return;
+        }
+        // 미인증이면 표준 OAuth2 로그인 시작
         response.sendRedirect("/oauth2/authorization/google");
     }
 

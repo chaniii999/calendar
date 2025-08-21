@@ -52,26 +52,7 @@ public class Schedule {
     @Column(name = "end_time")
     private LocalTime endTime; // 종료 시간 (null이면 종일 일정)
 
-    @Column(name = "is_all_day", nullable = false)
-    @Builder.Default
-    private boolean isAllDay = false; // 종일 일정 여부
 
-    @Column(name = "is_recurring", nullable = false)
-    @Builder.Default
-    private boolean isRecurring = false; // 반복 일정 여부
-
-    @Column(length = 20)
-    private String recurrenceRule; // 반복 규칙 ( "DAILY", "WEEKLY", "MONTHLY")
-
-    // === 상태 정보 ===
-    @Enumerated(EnumType.STRING)
-    @Column(length = 20, nullable = false)
-    @Builder.Default
-    private ScheduleStatus status = ScheduleStatus.PLANNED; // 일정 상태
-
-    @Column(name = "completion_rate")
-    @Builder.Default
-    private Integer completionRate = 0; // 완료율 (0-100)
 
     // === 알림 설정 ===
     @Column(name = "reminder_minutes")
@@ -83,7 +64,7 @@ public class Schedule {
 
     @Column(name = "reminded", nullable = false)
     @Builder.Default
-    private boolean reminded = false; // 시작 시점 알림 발송 완료 여부
+    private boolean reminded = false; // 시작 시점 알림 발송 완료 여부 (알림 중복 방지)
 
 
     // === 메타데이터 ===
@@ -105,32 +86,5 @@ public class Schedule {
     @PreUpdate
     public void preUpdate() {
         this.updatedAt = LocalDateTime.now();
-    }
-
-    // === 비즈니스 로직 메서드 ===
-    public boolean isCompleted() {
-        return ScheduleStatus.COMPLETED.equals(this.status);
-    }
-
-    public boolean isInProgress() {
-        return ScheduleStatus.IN_PROGRESS.equals(this.status);
-    }
-
-    public boolean isOverdue() {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime scheduleDateTime = this.scheduleDate.atTime(
-                this.startTime != null ? this.startTime : LocalTime.MIN
-        );
-        return now.isAfter(scheduleDateTime) && !this.isCompleted();
-    }
-
-
-    // === 일정 상태 열거형 ===
-    public enum ScheduleStatus {
-        PLANNED,      // 계획됨
-        IN_PROGRESS,  // 진행 중
-        COMPLETED,    // 완료됨
-        CANCELLED,    // 취소됨
-        POSTPONED     // 연기됨
     }
 }

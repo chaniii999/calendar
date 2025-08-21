@@ -1,7 +1,6 @@
 package com.calendar.app.service;
 
 import com.calendar.app.entity.Schedule;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -13,12 +12,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SsePushService {
 
     private static final long DEFAULT_TIMEOUT_MS = Duration.ofHours(6).toMillis();
 
-    // 사용자별 SSE 연결 관리 (단일 탭 가정, 다중 지원 시 리스트로 확장)
+    // 사용자별 SSE 연결 관리 (단일 탭 가정, 다중 탭 지원 시 리스트로 확장)
     private final Map<String, SseEmitter> userIdToEmitter = new ConcurrentHashMap<>();
 
     public SseEmitter subscribe(String userId) {
@@ -55,6 +53,24 @@ public class SsePushService {
             userIdToEmitter.remove(userId);
         }
     }
-}
 
+    public void pushTestEvent(String userId, String message) {
+        SseEmitter emitter = userIdToEmitter.get(userId);
+        if (emitter == null) {
+            log.debug("SSE 미구독 userId={}", userId);
+            return;
+        }
+        try {
+            emitter.send(SseEmitter.event()
+                .name("test")
+                .data(Map.of(
+                        "message", message != null ? message : "test",
+                        "ts", System.currentTimeMillis()
+                )));
+        } catch (IOException e) {
+            log.warn("SSE 전송 실패, 구독 해제 userId={}", userId);
+            userIdToEmitter.remove(userId);
+        }
+    }
+}
 

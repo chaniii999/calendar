@@ -74,6 +74,12 @@ public class ScheduleService {
         return ScheduleResponse.from(schedule);
     }
 
+    // 엔티티 직접 조회 (권한 검증 포함) - 컨트롤러 내 수동 트리거용
+    @Transactional(readOnly = true)
+    public Schedule getScheduleEntity(User user, String scheduleId) {
+        return validateScheduleOwnership(user, scheduleId);
+    }
+
     // 스케줄 수정
     @Transactional
     public ScheduleResponse updateSchedule(User user, String scheduleId, ScheduleRequest request) {
@@ -95,13 +101,11 @@ public class ScheduleService {
         schedule.setAllDay(request.getIsAllDay() != null ? request.getIsAllDay() : false);
         schedule.setRecurring(request.getIsRecurring() != null ? request.getIsRecurring() : false);
         schedule.setRecurrenceRule(request.getRecurrenceRule());
-        schedule.setReminderMinutes(request.getReminderMinutes());
-        schedule.setReminderEnabled(request.getIsReminderEnabled() != null ? request.getIsReminderEnabled() : true);
+        // 알림 관련 필드는 생성 시에만 결정. 일반 수정에서는 변경하지 않음.
 
-        // 알림 관련 변경이 있으면 reminded 초기화
+        // 일정 날짜/시작시간 변경 시 reminded 초기화
         if (!java.util.Objects.equals(oldDate, schedule.getScheduleDate())
-                || !java.util.Objects.equals(oldStart, schedule.getStartTime())
-                || !java.util.Objects.equals(oldEnabled, schedule.isReminderEnabled())) {
+                || !java.util.Objects.equals(oldStart, schedule.getStartTime())) {
             schedule.setReminded(false);
         }
 
@@ -109,6 +113,24 @@ public class ScheduleService {
         log.info("스케줄 수정 완료 - ID: {}", updatedSchedule.getId());
 
         return ScheduleResponse.from(updatedSchedule);
+    }
+
+    // 알림 허용 유무 전용 업데이트 (상세 페이지에서만 변경)
+    @Transactional
+    public ScheduleResponse updateReminderEnabled(User user, String scheduleId, boolean enabled) {
+        log.info("알림 허용 변경 - 사용자: {}, 스케줄 ID: {}, enabled: {}", user.getNickname(), scheduleId, enabled);
+        Schedule schedule = validateScheduleOwnership(user, scheduleId);
+
+        Boolean oldEnabled = schedule.isReminderEnabled();
+        schedule.setReminderEnabled(enabled);
+
+        // 활성화 상태 변경 시 다음 트리거를 위해 reminded 초기화
+        if (!java.util.Objects.equals(oldEnabled, enabled)) {
+            schedule.setReminded(false);
+        }
+
+        Schedule updated = scheduleRepository.save(schedule);
+        return ScheduleResponse.from(updated);
     }
 
     // 스케줄 삭제

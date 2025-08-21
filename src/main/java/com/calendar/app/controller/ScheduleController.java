@@ -104,6 +104,23 @@ public class ScheduleController {
         }
     }
 
+    // 알림 허용 유무 전용 변경 API
+    @PutMapping("/{scheduleId}/reminder-enabled")
+    public ResponseEntity<CommonResponse<ScheduleResponse>> updateReminderEnabled(
+            @AuthenticationPrincipal User user,
+            @PathVariable String scheduleId,
+            @RequestParam("enabled") boolean enabled
+    ) {
+        try {
+            ScheduleResponse response = scheduleService.updateReminderEnabled(user, scheduleId, enabled);
+            return ResponseEntity.ok(new CommonResponse<>(true, "알림 설정이 변경되었습니다.", response));
+        } catch (Exception e) {
+            log.error("알림 설정 변경 중 오류 발생", e);
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse<>(false, "알림 설정 변경에 실패했습니다: " + e.getMessage(), null));
+        }
+    }
+
     // 스케줄 삭제
     @DeleteMapping("/{scheduleId}")
     public ResponseEntity<CommonResponse<Void>> deleteSchedule(
