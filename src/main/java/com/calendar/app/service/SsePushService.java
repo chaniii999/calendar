@@ -45,8 +45,7 @@ public class SsePushService {
                         "scheduleId", schedule.getId(),
                         "title", schedule.getTitle(),
                         "scheduleDate", schedule.getScheduleDate(),
-                        "startTime", schedule.getStartTime(),
-                        "isAllDay", schedule.isAllDay()
+                        "startTime", schedule.getStartTime()
                 )));
         } catch (IOException e) {
             log.warn("SSE 전송 실패, 구독 해제 userId={}", userId);

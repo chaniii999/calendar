@@ -216,69 +216,7 @@ public class ScheduleController {
         }
     }
 
-    // 완료된 스케줄 조회
-    @GetMapping("/completed")
-    public ResponseEntity<CommonResponse<List<ScheduleResponse>>> getCompletedSchedules(
-            @AuthenticationPrincipal User user
-    ) {
-        try {
-            List<ScheduleResponse> schedules = scheduleService.getCompletedSchedules(user);
-            return ResponseEntity.ok(new CommonResponse<>(true, "완료된 스케줄 조회 성공", schedules));
-        } catch (Exception e) {
-            log.error("완료된 스케줄 조회 중 오류 발생", e);
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse<>(false, "스케줄 조회에 실패했습니다: " + e.getMessage(), null));
-        }
-    }
 
-    // 진행 중인 스케줄 조회
-    @GetMapping("/in-progress")
-    public ResponseEntity<CommonResponse<List<ScheduleResponse>>> getInProgressSchedules(
-            @AuthenticationPrincipal User user
-    ) {
-        try {
-            List<ScheduleResponse> schedules = scheduleService.getInProgressSchedules(user);
-            return ResponseEntity.ok(new CommonResponse<>(true, "진행 중인 스케줄 조회 성공", schedules));
-        } catch (Exception e) {
-            log.error("진행 중인 스케줄 조회 중 오류 발생", e);
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse<>(false, "스케줄 조회에 실패했습니다: " + e.getMessage(), null));
-        }
-    }
 
-    // === 상태 관리 ===
 
-    // 스케줄 상태 변경
-    @PutMapping("/{scheduleId}/status")
-    public ResponseEntity<CommonResponse<ScheduleResponse>> updateScheduleStatus(
-            @AuthenticationPrincipal User user,
-            @PathVariable String scheduleId,
-            @RequestParam Schedule.ScheduleStatus status
-    ) {
-        try {
-            ScheduleResponse response = scheduleService.updateScheduleStatus(user, scheduleId, status);
-            return ResponseEntity.ok(new CommonResponse<>(true, "스케줄 상태가 성공적으로 변경되었습니다.", response));
-        } catch (Exception e) {
-            log.error("스케줄 상태 변경 중 오류 발생", e);
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse<>(false, "스케줄 상태 변경에 실패했습니다: " + e.getMessage(), null));
-        }
-    }
-
-    // 완료율 업데이트
-    @PutMapping("/{scheduleId}/completion-rate")
-    public ResponseEntity<CommonResponse<ScheduleResponse>> updateCompletionRate(
-            @AuthenticationPrincipal User user,
-            @PathVariable String scheduleId,
-            @RequestParam Integer completionRate
-    ) {
-        try {
-            ScheduleResponse response = scheduleService.updateCompletionRate(user, scheduleId, completionRate);
-            return ResponseEntity.ok(new CommonResponse<>(true, "완료율이 성공적으로 업데이트되었습니다.", response));
-        } catch (Exception e) {
-            log.error("완료율 업데이트 중 오류 발생", e);
-            return ResponseEntity.badRequest()
-                    .body(new CommonResponse<>(false, "완료율 업데이트에 실패했습니다: " + e.getMessage(), null));
-        }
-    }
 }

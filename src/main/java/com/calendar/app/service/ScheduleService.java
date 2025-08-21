@@ -53,9 +53,6 @@ public class ScheduleService {
                 .scheduleDate(request.getScheduleDate())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
-                .isAllDay(request.getIsAllDay() != null ? request.getIsAllDay() : false)
-                .isRecurring(request.getIsRecurring() != null ? request.getIsRecurring() : false)
-                .recurrenceRule(request.getRecurrenceRule())
                 .reminderMinutes(request.getReminderMinutes())
                 .isReminderEnabled(request.getIsReminderEnabled() != null ? request.getIsReminderEnabled() : true)
                 .build();
@@ -98,10 +95,6 @@ public class ScheduleService {
         schedule.setScheduleDate(request.getScheduleDate());
         schedule.setStartTime(request.getStartTime());
         schedule.setEndTime(request.getEndTime());
-        schedule.setAllDay(request.getIsAllDay() != null ? request.getIsAllDay() : false);
-        schedule.setRecurring(request.getIsRecurring() != null ? request.getIsRecurring() : false);
-        schedule.setRecurrenceRule(request.getRecurrenceRule());
-        // 알림 관련 필드는 생성 시에만 결정. 일반 수정에서는 변경하지 않음.
 
         // 일정 날짜/시작시간 변경 시 reminded 초기화
         if (!java.util.Objects.equals(oldDate, schedule.getScheduleDate())
@@ -189,64 +182,6 @@ public class ScheduleService {
                 .collect(Collectors.toList());
     }
 
-    // 완료된 스케줄 조회
-    @Transactional(readOnly = true)
-    public List<ScheduleResponse> getCompletedSchedules(User user) {
-        log.info("완료된 스케줄 조회 요청 - 사용자: {}", user.getNickname());
-        List<Schedule> schedules = scheduleRepository.findByUserAndStatusOrderByScheduleDateDesc(user, Schedule.ScheduleStatus.COMPLETED);
-        return schedules.stream().map(ScheduleResponse::from).collect(Collectors.toList());
-    }
 
-    // 진행 중인 스케줄 조회
-    @Transactional(readOnly = true)
-    public List<ScheduleResponse> getInProgressSchedules(User user) {
-        log.info("진행 중인 스케줄 조회 요청 - 사용자: {}", user.getNickname());
-        List<Schedule> schedules = scheduleRepository.findByUserAndStatusOrderByScheduleDateDesc(user, Schedule.ScheduleStatus.IN_PROGRESS);
-        return schedules.stream().map(ScheduleResponse::from).collect(Collectors.toList());
-    }
 
-    // === 상태 관리 ===
-
-    // 스케줄 상태 변경
-    @Transactional
-    public ScheduleResponse updateScheduleStatus(User user, String scheduleId, Schedule.ScheduleStatus status) {
-        log.info("스케줄 상태 변경 요청 - 사용자: {}, 스케줄 ID: {}, 상태: {}", user.getNickname(), scheduleId, status);
-        Schedule schedule = validateScheduleOwnership(user, scheduleId);
-
-        schedule.setStatus(status);
-
-        // 완료 상태로 변경 시 완료율을 100%로 설정
-        if (status == Schedule.ScheduleStatus.COMPLETED) {
-            schedule.setCompletionRate(100);
-        }
-
-        Schedule updatedSchedule = scheduleRepository.save(schedule);
-        log.info("스케줄 상태 변경 완료 - ID: {}, 상태: {}", updatedSchedule.getId(), status);
-
-        return ScheduleResponse.from(updatedSchedule);
-    }
-
-    // 완료율 업데이트
-    @Transactional
-    public ScheduleResponse updateCompletionRate(User user, String scheduleId, Integer completionRate) {
-        log.info("완료율 업데이트 요청 - 사용자: {}, 스케줄 ID: {}, 완료율: {}%", user.getNickname(), scheduleId, completionRate);
-        Schedule schedule = validateScheduleOwnership(user, scheduleId);
-
-        // 완료율 범위 검증 (0-100)
-        if (completionRate < 0 || completionRate > 100) {
-            throw new InvalidCompletionRateException("완료율은 0에서 100 사이의 값이어야 합니다.");
-        }
-
-        schedule.setCompletionRate(completionRate);
-
-        // 완료율이 100%이면 상태를 완료로 변경
-        if (completionRate == 100) {
-            schedule.setStatus(Schedule.ScheduleStatus.COMPLETED);
-        }
-
-        Schedule updatedSchedule = scheduleRepository.save(schedule);
-        log.info("완료율 업데이트 완료 - ID: {}, 완료율: {}%", updatedSchedule.getId(), completionRate);
-
-        return ScheduleResponse.from(updatedSchedule);
-    }
 }

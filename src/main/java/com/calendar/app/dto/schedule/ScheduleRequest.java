@@ -22,9 +22,6 @@ public class ScheduleRequest {
     private LocalDate scheduleDate; // 일정 날짜
     private LocalTime startTime; // 시작 시간
     private LocalTime endTime; // 종료 시간
-    private Boolean isAllDay; // 종일 일정 여부
-    private Boolean isRecurring; // 반복 일정 여부
-    private String recurrenceRule; // 반복 규칙
 
     // === 알림 설정 ===
     private Integer reminderMinutes; // 알림 시간 (분 전)

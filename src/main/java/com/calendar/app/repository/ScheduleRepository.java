@@ -25,8 +25,6 @@ import java.util.List;
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate = :date ORDER BY s.startTime")
     List<Schedule> findByUserAndDate(@Param("user") User user, @Param("date") LocalDate date);
 
-    // 사용자의 특정 상태 스케줄 조회
-    List<Schedule> findByUserAndStatusOrderByScheduleDateDesc(User user, Schedule.ScheduleStatus status);
 
     // 사용자의 모든 스케줄 조회 (최신순)
     List<Schedule> findByUserOrderByScheduleDateDescStartTimeAsc(User user);

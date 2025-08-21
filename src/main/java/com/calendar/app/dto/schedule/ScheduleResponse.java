@@ -25,14 +25,6 @@ public class ScheduleResponse {
     private LocalDate scheduleDate;
     private LocalTime startTime;
     private LocalTime endTime;
-    private boolean isAllDay;
-    private boolean isRecurring;
-    private String recurrenceRule;
-
-    // === 상태 정보 ===
-    private Schedule.ScheduleStatus status;
-    private Integer completionRate;
-    private boolean isOverdue;
 
     // === 알림 설정 ===
     private Integer reminderMinutes;
@@ -53,12 +45,6 @@ public class ScheduleResponse {
                 .scheduleDate(schedule.getScheduleDate())
                 .startTime(schedule.getStartTime())
                 .endTime(schedule.getEndTime())
-                .isAllDay(schedule.isAllDay())
-                .isRecurring(schedule.isRecurring())
-                .recurrenceRule(schedule.getRecurrenceRule())
-                .status(schedule.getStatus())
-                .completionRate(schedule.getCompletionRate())
-                .isOverdue(schedule.isOverdue())
                 .reminderMinutes(schedule.getReminderMinutes())
                 .isReminderEnabled(schedule.isReminderEnabled())
                 .createdAt(schedule.getCreatedAt())
