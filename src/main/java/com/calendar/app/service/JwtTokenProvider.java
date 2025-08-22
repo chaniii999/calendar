@@ -28,10 +28,10 @@ public class JwtTokenProvider {
 
     @PostConstruct
     public void init() {
-        log.info("JWT Properties loaded - Secret Key length: {}",
+        log.debug("JWT Properties loaded - Secret Key length: {}",
                 jwtProperties.getSecretKey() != null ? jwtProperties.getSecretKey().length() : "null");
-        log.info("Access Token Validity: {} seconds", jwtProperties.getAccessTokenValidityInSeconds());
-        log.info("Refresh Token Validity: {} seconds", jwtProperties.getRefreshTokenValidityInSeconds());
+        log.debug("Access Token Validity: {} seconds", jwtProperties.getAccessTokenValidityInSeconds());
+        log.debug("Refresh Token Validity: {} seconds", jwtProperties.getRefreshTokenValidityInSeconds());
 
         if (jwtProperties.getSecretKey() == null) {
             throw new IllegalStateException("JWT secret key is not configured properly");
@@ -164,7 +164,7 @@ public class JwtTokenProvider {
 
     // 토큰 갱신 (액세스 토큰이 만료되었거나 곧 만료될 때)
     public String refreshAccessToken(String email) {
-        log.info("액세스 토큰 갱신 요청: {}", email);
+        log.debug("액세스 토큰 갱신 요청: {}", email);
         return createAccessToken(email);
     }
 

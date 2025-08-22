@@ -21,6 +21,8 @@ public class ReminderScheduler {
         int sent = reminderService.sendDueReminders(now);
         if (sent > 0) {
             log.info("푸시 알림 전송: {}건", sent);
+        } else {
+            log.debug("푸시 알림 전송 건수 0건 at {}", now);
         }
     }
 }

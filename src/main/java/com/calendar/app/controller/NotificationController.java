@@ -71,7 +71,10 @@ public class NotificationController {
     @PostMapping("/trigger/{scheduleId}")
     public void triggerReminder(@AuthenticationPrincipal User user, @PathVariable String scheduleId) {
         Schedule schedule = scheduleService.getScheduleEntity(user, scheduleId);
-        ssePushService.pushScheduleReminder(schedule);
+        boolean delivered = ssePushService.pushScheduleReminder(schedule);
+        if (!delivered) {
+            // 수동 트리거 시에도 미구독이면 reminded를 건드리지 않음
+        }
     }
 }
 

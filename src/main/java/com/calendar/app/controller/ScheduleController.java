@@ -4,7 +4,7 @@ package com.calendar.app.controller;
 import com.calendar.app.dto.CommonResponse;
 import com.calendar.app.dto.schedule.ScheduleRequest;
 import com.calendar.app.dto.schedule.ScheduleResponse;
-import com.calendar.app.entity.Schedule;
+import com.calendar.app.dto.schedule.ReminderEnabledResponse;
 import com.calendar.app.entity.User;
 import com.calendar.app.exception.ScheduleNotFoundException;
 import com.calendar.app.exception.UnauthorizedAccessException;
@@ -121,6 +121,23 @@ public class ScheduleController {
         }
     }
 
+    // 알림 토글 전용 API (요청마다 반전)
+    @PostMapping("/{scheduleId}/reminder-enabled/toggle")
+    public ResponseEntity<CommonResponse<ReminderEnabledResponse>> toggleReminderEnabled(
+            @AuthenticationPrincipal User user,
+            @PathVariable String scheduleId
+    ) {
+        try {
+            ScheduleResponse schedule = scheduleService.toggleReminderEnabled(user, scheduleId);
+            ReminderEnabledResponse body = new ReminderEnabledResponse(schedule.getId(), schedule.isReminderEnabled());
+            return ResponseEntity.ok(new CommonResponse<>(true, "알림 설정이 토글되었습니다.", body));
+        } catch (Exception e) {
+            log.error("알림 토글 중 오류 발생", e);
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse<>(false, "알림 토글에 실패했습니다: " + e.getMessage(), null));
+        }
+    }
+
     // 스케줄 삭제
     @DeleteMapping("/{scheduleId}")
     public ResponseEntity<CommonResponse<Void>> deleteSchedule(
@@ -213,6 +230,22 @@ public class ScheduleController {
             log.error("날짜 범위 스케줄 조회 중 오류 발생", e);
             return ResponseEntity.badRequest()
                     .body(new CommonResponse<>(false, "스케줄 조회에 실패했습니다: " + e.getMessage(), null));
+        }
+    }
+
+    // 시작 시각 도달 시 수동 트리거 API
+    @PostMapping("/{scheduleId}/trigger-start")
+    public ResponseEntity<CommonResponse<ScheduleResponse>> triggerStartReminder(
+            @AuthenticationPrincipal User user,
+            @PathVariable String scheduleId
+    ) {
+        try {
+            ScheduleResponse response = scheduleService.triggerStartReminder(user, scheduleId);
+            return ResponseEntity.ok(new CommonResponse<>(true, "시작 시각 알림이 전송되었습니다.", response));
+        } catch (Exception e) {
+            log.error("시작 시각 알림 트리거 중 오류", e);
+            return ResponseEntity.badRequest()
+                    .body(new CommonResponse<>(false, "알림 트리거에 실패했습니다: " + e.getMessage(), null));
         }
     }
 
