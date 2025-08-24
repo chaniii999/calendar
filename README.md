@@ -4,45 +4,41 @@
 
 ### 핵심 기능
 - 인증: Google OAuth2 로그인, Access/Refresh Token 발급 및 갱신(JWT)
-- 일정: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율 업데이트
+- 일정: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율/알림 설정
 - 문서화: Swagger UI 제공
 - 운영: Actuator 헬스체크, Redis 연동
 
 ---
 
-## 빌드 및 실행 방법
+## 도메인
+- 프론트엔드: `https://everyplan.site`
+- 백엔드(API): `https://api.everyplan.site`
+- Swagger UI: `https://api.everyplan.site/swagger-ui.html`
 
-### 1) 요구사항(로컬)
-- Java 17 (JDK 17)
-- MySQL 8.x (로컬: `localhost:3306`)
-- Redis 7.x (로컬: `localhost:6379`)
-- Gradle Wrapper 동봉(`gradlew`, `gradlew.bat`)
+---
 
-애플리케이션 기본 프로파일은 `local`입니다. 설정은 `src/main/resources/application-local.yml`을 사용합니다.
+## 빌드 및 실행
 
-### 2) 환경 설정
-`src/main/resources/application-local.yml` 기본값 요약:
-- DB: `jdbc:mysql://localhost:3306/calendar`
-  - 사용자: `root`
-  - 비밀번호: `mysql`
-- Redis: `localhost:6379`
-- OAuth2 (Google): client-id/client-secret 필요
-- JWT: 비밀키 및 토큰 만료시간 설정
+### 1) 요구사항
+- JDK 17 (Java 17)
+- MySQL 8.x (`localhost:3306`)
+- Redis 7.x (`localhost:6379`)
+- Gradle Wrapper (`gradlew`, `gradlew.bat`)
 
-필요 시 위 파일을 로컬 환경에 맞게 수정하세요. 민감정보는 환경변수 또는 외부 설정으로 관리하는 것을 권장합니다.
+기본 프로파일은 `local`이며 `src/main/resources/application-local.yml`을 사용합니다. 운영은 `-Dspring.profiles.active=prod`로 `application-prod.yml`을 사용합니다.
 
-### 3) 데이터베이스 준비
-1. 데이터베이스 생성
+### 2) 데이터베이스 준비
+1. DB 생성
    ```sql
    CREATE DATABASE IF NOT EXISTS calendar CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
    ```
-2. 스키마/기초데이터 반영
+2. (선택) 스키마/기초데이터 반영
    ```bash
    mysql -u root -p calendar < db/schema.sql
    mysql -u root -p calendar < db/data.sql
    ```
 
-### 4) 애플리케이션 실행
+### 3) 로컬 실행
 개발 모드(권장):
 ```bash
 # macOS/Linux
@@ -52,54 +48,92 @@
 ./gradlew.bat bootRun
 ```
 
-패키징 실행:
+패키징 후 실행:
 ```bash
 # macOS/Linux
-./gradlew clean build
-java -jar build/libs/demo-0.0.1-SNAPSHOT.jar
+./gradlew clean bootJar
+JAR=$(ls build/libs/*-SNAPSHOT.jar || ls build/libs/*.jar | head -n 1)
+java -jar -Dspring.profiles.active=local "$JAR"
 
-# Windows PowerShell
-./gradlew.bat clean build
-java -jar build\libs\demo-0.0.1-SNAPSHOT.jar
+# 운영 프로파일로 실행
+java -jar -Dspring.profiles.active=prod "$JAR"
 ```
 
-### 5) 확인
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- 헬스체크 예시: `GET /api/auth/status` → `{ "ok": true }`
+### 4) 헬스 체크
+- `GET /api/auth/status` → `{ "ok": true }`
 
-### 6) 테스트
+---
+
+## 운영 설정 요약 (`application-prod.yml`)
+- Frontend 성공 리다이렉트: `https://everyplan.site/login/success`
+- DB: `jdbc:mysql://localhost:3306/calendar`, 사용자 `root`, 비밀번호 `mysql`
+- Redis: `localhost:6379`
+- JPA: `ddl-auto=update`, `show-sql=true`
+- OAuth2 (Google): redirect-uri `https://api.everyplan.site/login/oauth2/code/{registrationId}`
+- JWT: 비밀키 및 만료시간 값이 파일에 기입됨
+- 로깅: `org.springframework.security`, `oauth2` 등 DEBUG
+
+Google OAuth 콘솔에 승인된 리디렉션 URI로 `https://api.everyplan.site/login/oauth2/code/google`를 등록하세요.
+
+---
+
+## 배포 (GitHub Actions + EC2 Ubuntu)
+워크플로우: `.github/workflows/deploy.yml`
+- 트리거: `main` 브랜치 푸시
+- EC2에 SSH 접속 → git clone/업데이트 → Gradle 빌드(테스트 제외) → JAR 배치
+- `application-prod.yml`을 EC2 `/home/ubuntu/apps/config/application-prod.yml`로 복사
+- systemd 서비스 설치/재시작 (`deploy/calendar.service`)
+
+EC2 1회 초기 세팅(Ubuntu):
 ```bash
-# macOS/Linux
+sudo apt-get update -y
+sudo apt-get install -y openjdk-17-jdk git mysql-server redis-server
+sudo systemctl enable --now mysql
+sudo systemctl enable --now redis-server
+
+# (MySQL) DB/계정 예시
+sudo mysql -e "CREATE DATABASE IF NOT EXISTS calendar CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
+sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'mysql';" || true
+```
+
+수동 배포/실행(대안):
+```bash
+./gradlew clean bootJar -x test
+sudo mkdir -p /home/ubuntu/apps
+JAR=$(ls build/libs/*-SNAPSHOT.jar || ls build/libs/*.jar | head -n 1)
+sudo cp "$JAR" /home/ubuntu/apps/calendar.jar
+sudo cp deploy/calendar.service /etc/systemd/system/calendar.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now calendar
+```
+
+문제 해결: JDK 미설치로 빌드 실패 시
+```bash
+sudo apt-get install -y openjdk-17-jdk
+./gradlew -Dorg.gradle.java.home=/usr/lib/jvm/java-17-openjdk-amd64 clean bootJar -x test
+```
+
+---
+
+## 보안/CORS/문서화
+- CORS 허용 오리진: `https://everyplan.site`, 로컬 개발 오리진(`http://localhost:5173` 등)
+- Swagger UI: `https://api.everyplan.site/swagger-ui.html`
+- OpenAPI 서버: 운영 `https://api.everyplan.site`, 로컬 `http://localhost:8080`
+
+---
+
+## 테스트
+실행:
+```bash
 ./gradlew test
-
-# Windows PowerShell
-./gradlew.bat test
 ```
 
----
-
-## DB 스키마 및 기초데이터 백업파일
-- 스키마: `db/schema.sql`
-- 기초데이터: `db/data.sql`
-
-엔티티 개요:
-- `users`: OAuth2 사용자(비밀번호 없음), 기본 권한 `ROLE_USER`
-- `schedules`: 사용자 소유 일정, 상태/반복/완료율/알림/색상 등 포함, 인덱스(사용자, 일자, 생성일)
-
-주의: 애플리케이션은 기본적으로 JPA `ddl-auto=update`이지만, 초기 세팅을 위해 수동으로 스키마를 제공했습니다.
-
----
-
-## 주력 라이브러리 및 사용 이유
-- Spring Boot Web/Data JPA/Security/Validation: 표준적인 REST API, 엔티티 매핑, 인증/인가, 입력 검증을 신속하게 구성하기 위해 사용
-- Spring Boot Data Redis: 토큰/세션 유틸 및 캐시/블랙리스트 등 확장 고려
-- Spring Security OAuth2 Client: Google OAuth2 로그인 연동 간소화
-- JJWT (`io.jsonwebtoken:jjwt-*`): JWT 생성/검증을 안정적으로 처리
-- springdoc-openapi: OpenAPI 3 문서 자동 생성 및 Swagger UI 제공
-- ULID Creator: 시간순 정렬 가능하고 충돌 확률이 낮은 26자 ULID 사용
-- Lombok: 보일러플레이트(게터/세터/빌더) 감소로 코드 가독성 향상
-- MySQL Connector/J: MySQL 연동
-- Spring Cloud Config Server: 구성 외부화·확장이 용이하도록 채택(필요 시 비활성화 가능)
+추가된 테스트 개요:
+- `AuthControllerIntegrationTest`: `GET /api/auth/status` 200/ok 검증
+- `ScheduleControllerTest`(MockMvc WebMvcTest): 주요 CRUD/조회 응답 형식 검증
+- `ScheduleControllerIntegrationTest`: 인증 경계(Authorization 헤더) 확인
+- `JwtTokenProviderTest`: 토큰 생성/검증/인증 객체 생성 검증
+- `RedisServiceTest`: 리프레시 토큰 저장/조회/삭제 검증
 
 ---
 
@@ -123,10 +157,3 @@ java -jar build\libs\demo-0.0.1-SNAPSHOT.jar
   - `PUT /api/schedule/{id}/completion-rate?completionRate=0..100`: 완료율 변경
 
 인증이 필요한 API는 `Authorization: Bearer <ACCESS_TOKEN>` 헤더가 필요합니다.
-
----
-
-## 기타
-- 프론트엔드 리다이렉트 경로는 `application-local.yml`의 `frontend.success-redirect`에서 관리됩니다.
-
-
