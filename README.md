@@ -128,6 +128,5 @@ java -jar build\libs\demo-0.0.1-SNAPSHOT.jar
 
 ## 기타
 - 프론트엔드 리다이렉트 경로는 `application-local.yml`의 `frontend.success-redirect`에서 관리됩니다.
-- 실제 운영 환경에서는 OAuth2/DB/JWT/Redis 설정을 반드시 외부화하고, HTTPS 및 CORS 설정을 강화하세요.
 
 
