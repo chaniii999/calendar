@@ -1,0 +1,17 @@
+[Unit]
+Description=Calendar Spring Boot Application
+After=network.target
+
+[Service]
+User=ubuntu
+EnvironmentFile=/home/ubuntu/apps/calendar.env
+WorkingDirectory=/home/ubuntu/apps
+ExecStart=/usr/bin/java -jar -Dspring.profiles.active=prod /home/ubuntu/apps/calendar.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+
+

@@ -61,6 +61,8 @@ public class SsePushService {
         Map<String, Object> payload = Map.of(
                 "scheduleId", schedule.getId(),
                 "title", schedule.getTitle(),
+                "description", schedule.getDescription(),
+                "message", schedule.getDescription(),
                 "scheduleDate", schedule.getScheduleDate(),
                 "startTime", schedule.getStartTime()
         );

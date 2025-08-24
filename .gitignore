@@ -38,3 +38,19 @@ out/
 
 ### local ###
 *-local.yml
+*-prod.yml
+
+### secrets ###
+# Env files (local/EC2)
+*.env
+*.env.*
+**/deploy/*.env
+**/*.secret
+
+# Spring profile-specific prod/stage local overrides
+application-*.local.yml
+application-*.secrets.yml
+
+# OS / tooling dumps
+*.log
+hs_err_pid*
