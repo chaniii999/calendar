@@ -33,8 +33,8 @@ public class SwaggerConfig {
                 .version("1.0.0")
                 .contact(new Contact()
                         .name("Calendar Team")
-                        .email("calendar@example.com")
-                        .url("https://github.com/calendar-app"))
+                        .email("psc0729@naver.com")
+                        .url("https://github.com/chaniii999/calendar"))
                 .license(new License()
                         .name("MIT License")
                         .url("https://opensource.org/licenses/MIT"));
@@ -46,7 +46,7 @@ public class SwaggerConfig {
                         .url("http://localhost:8080")
                         .description("로컬 개발 서버"),
                 new Server()
-                        .url("https://api.calendar.com")
+                        .url("https://api.everyplan.site")
                         .description("운영 서버")
         );
     }

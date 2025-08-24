@@ -30,7 +30,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:5173",   // Vite Dev (Frontend)
+                "https://everyplan.site",
+                "http://localhost:5173",
                 "http://127.0.0.1:5173"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
@@ -66,8 +67,6 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/sign-in").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/sign-up").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/send-code").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/auth/verify-code").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/login/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/status").permitAll()
@@ -76,10 +75,6 @@ public class SecurityConfig {
                         // OAuth2 관련 엔드포인트 허용
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/**").permitAll()
-                        // 테스트 API 허용
-                        .requestMatchers(HttpMethod.GET, "/api/timer/test-stats").permitAll()
-                        // WebSocket 엔드포인트 허용
-                        .requestMatchers("/ws-timer/**").permitAll()
                         // Swagger UI 허용 (개발 환경)
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", 
                                        "/swagger-resources/**", "/webjars/**", "/error").permitAll()
