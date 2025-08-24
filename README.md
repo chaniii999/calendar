@@ -2,6 +2,10 @@
 
 간단한 일정 관리 백엔드 API입니다. Google OAuth2 로그인으로 사용자를 식별하고, JWT 토큰으로 보호되는 일정 CRUD 및 조회 기능을 제공합니다. 스케줄은 일자/시간, 반복, 색상, 완료율, 알림 등 다양한 메타정보를 포함합니다. ULID를 사용해 전역적으로 정렬 가능한 식별자를 부여합니다.
 
+### API 명세서 (Swagger)
+https://docs.google.com/spreadsheets/d/1yqBxcY0RIi6PEaZf8qRdayLTLLIKmhkgy8WLyVhIh-k/edit?gid=0#gid=0
+
+
 ### 핵심 기능
 - 인증: Google OAuth2 로그인, Access/Refresh Token 발급 및 갱신(JWT)
 - 일정: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율/알림 설정
