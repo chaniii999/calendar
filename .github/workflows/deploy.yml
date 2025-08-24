@@ -9,7 +9,7 @@ env:
   APP_DIR: /home/ubuntu/apps
   SERVICE_NAME: calendar
   REPO_DIR: /home/ubuntu/calendar-repo
-  REPO_URL: https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git
+  REPO_URL: https://github.com/${{ github.repository }}.git
 
 jobs:
   deploy:
@@ -24,7 +24,7 @@ jobs:
           script_stop: true
           script: |
             set -euo pipefail
-            echo "[1/7] Install prerequisites (git, Java)"
+            echo "[1/6] Install prerequisites (git, Java)"
             if ! command -v git >/dev/null 2>&1; then
               sudo apt-get update -y
               sudo apt-get install -y git
@@ -34,11 +34,11 @@ jobs:
               sudo apt-get install -y openjdk-17-jre-headless
             fi
 
-            echo "[2/7] Prepare app directories"
+            echo "[2/6] Prepare app directories"
             sudo mkdir -p ${APP_DIR}/config
             sudo chown -R ${USER}:${USER} ${APP_DIR}
 
-            echo "[3/7] Clone or update repository"
+            echo "[3/6] Clone or update repository"
             if [ -d "${REPO_DIR}/.git" ]; then
               git -C "${REPO_DIR}" fetch --all --prune
               git -C "${REPO_DIR}" reset --hard origin/main
@@ -47,32 +47,17 @@ jobs:
               git clone "${REPO_URL}" "${REPO_DIR}"
             fi
 
-            echo "[4/7] Build application with Gradle"
+            echo "[4/6] Build application with Gradle"
             cd "${REPO_DIR}"
             chmod +x gradlew || true
             ./gradlew clean bootJar -x test
 
-            echo "[5/7] Copy artifacts and prod config"
+            echo "[5/6] Copy artifacts and prod config"
             JAR_FILE=$(ls build/libs/*-SNAPSHOT.jar || ls build/libs/*.jar | head -n 1)
             cp "$JAR_FILE" "${APP_DIR}/${APP_NAME}.jar"
             cp src/main/resources/application-prod.yml "${APP_DIR}/config/application-prod.yml"
 
-            echo "[6/7] Render environment file from secrets"
-            cat > "${APP_DIR}/${APP_NAME}.env" << 'ENVEOF'
-FRONTEND_SUCCESS_REDIRECT=${{ secrets.FRONTEND_SUCCESS_REDIRECT }}
-GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-OAUTH2_REDIRECT_URI=${{ secrets.OAUTH2_REDIRECT_URI }}
-JWT_SECRET=${{ secrets.JWT_SECRET }}
-# DB overrides (optional, defaults set in application-prod.yml)
-DB_URL=${{ secrets.DB_URL }}
-DB_USERNAME=${{ secrets.DB_USERNAME }}
-DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-# Server
-SERVER_PORT=${{ secrets.SERVER_PORT }}
-ENVEOF
-
-            echo "[7/7] Install systemd service and restart"
+            echo "[6/6] Install systemd service and restart"
             sudo cp "${REPO_DIR}/deploy/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service"
             sudo systemctl daemon-reload
             sudo systemctl enable ${SERVICE_NAME}.service
