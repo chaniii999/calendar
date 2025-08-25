@@ -1,6 +1,8 @@
 spring:
   profiles:
     active: local
+  jackson:
+    time-zone: Asia/Seoul
 
 # Swagger 설정
 springdoc:

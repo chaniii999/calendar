@@ -6,7 +6,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 @Slf4j
 @Component
@@ -18,7 +17,7 @@ public class ReminderScheduler {
     // 매 30초마다 확인 (운영에서는 1분 권장). cron표현 가능: @Scheduled(cron = "0 * * * * *")
     @Scheduled(fixedDelay = 30000L)
     public void scanAndPushReminders() {
-        LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
+        LocalDateTime now = LocalDateTime.now();
         int sent = reminderService.sendDueReminders(now);
         if (sent > 0) {
             log.info("푸시 알림 전송: {}건", sent);
