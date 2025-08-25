@@ -6,6 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.time.ZoneId;
+import java.util.TimeZone;
 
 @SpringBootApplication
 @EnableScheduling
@@ -13,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class CalendarApplication {
 
 	public static void main(String[] args) {
+		TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("Asia/Seoul")));
 		SpringApplication.run(CalendarApplication.class, args);
 	}
 
