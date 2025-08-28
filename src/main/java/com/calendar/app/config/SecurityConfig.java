@@ -76,6 +76,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/login/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/stream").permitAll()
                         // OAuth2 관련 엔드포인트 허용
