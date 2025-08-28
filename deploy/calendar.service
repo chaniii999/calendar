@@ -1,14 +1,28 @@
 [Unit]
 Description=Calendar Spring Boot Application
-After=network.target
+After=network.target mysql.service redis-server.service
+Wants=mysql.service redis-server.service
 
 [Service]
 User=ubuntu
 WorkingDirectory=/home/ubuntu/apps
-ExecStart=/usr/bin/java -jar -Dspring.profiles.active=prod /home/ubuntu/apps/calendar.jar
+Environment=JAVA_OPTS="-Xms512m -Xmx1024m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/home/ubuntu/apps/logs"
+Environment=SPRING_PROFILES_ACTIVE=prod
+ExecStart=/usr/bin/java $JAVA_OPTS -jar /home/ubuntu/apps/calendar.jar
 SuccessExitStatus=143
 Restart=always
 RestartSec=10
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+# 리소스 제한
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 로그 설정
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=calendar-app
 
 [Install]
 WantedBy=multi-user.target
