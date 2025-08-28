@@ -49,4 +49,12 @@ import java.util.List;
     // 알림 후보 스케줄 조회: 오늘 날짜, 시작시간 존재, 알림 활성, 미발송
     @Query("SELECT s FROM Schedule s WHERE s.isReminderEnabled = true AND s.reminded = false AND s.scheduleDate = :today AND s.startTime IS NOT NULL")
     List<Schedule> findPendingReminderCandidates(@Param("today") LocalDate today);
+
+    // 정확한 알림 시간에 도달한 스케줄 조회 (정확한 분 단위 매칭)
+    @Query("SELECT s FROM Schedule s WHERE s.isReminderEnabled = true AND s.reminded = false AND s.scheduleDate = :date AND s.startTime = :time AND s.startTime IS NOT NULL")
+    List<Schedule> findByReminderTimeAndNotReminded(@Param("date") LocalDate date, @Param("time") LocalTime time);
+
+    // 특정 날짜의 알림 상태 초기화
+    @Query("UPDATE Schedule s SET s.reminded = false WHERE s.scheduleDate = :date")
+    int resetRemindedStatus(@Param("date") LocalDate date);
 }
