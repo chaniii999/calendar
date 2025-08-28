@@ -7,17 +7,18 @@ https://docs.google.com/spreadsheets/d/1yqBxcY0RIi6PEaZf8qRdayLTLLIKmhkgy8WLyVhI
 
 
 ### 핵심 기능
-- 인증: Google OAuth2 로그인, Access/Refresh Token 발급 및 갱신(JWT)
-- 일정: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율/알림 설정
-- 문서화: Swagger UI 제공
-- 운영: Actuator 헬스체크, Redis 연동
+- **인증**: Google OAuth2 로그인, Access/Refresh Token 발급 및 자동 갱신(JWT)
+- **일정**: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율/알림 설정
+- **보안**: JWT 토큰 자동 갱신, Redis 기반 세션 관리
+- **문서화**: Swagger UI 제공
+- **운영**: Actuator 헬스체크, Redis 연동
 
 ---
 
 ## 도메인
-- 프론트엔드: `https://everyplan.site`
-- 백엔드(API): `https://api.everyplan.site`
-- Swagger UI: `https://api.everyplan.site/swagger-ui.html`
+- **프론트엔드**: `https://everyplan.site`
+- **백엔드(API)**: `https://api.everyplan.site`
+- **Swagger UI**: `https://api.everyplan.site/swagger-ui.html`
 
 ---
 
@@ -68,16 +69,40 @@ java -jar -Dspring.profiles.active=prod "$JAR"
 
 ---
 
+
 ## 운영 설정 요약 (`application-prod.yml`)
-- Frontend 성공 리다이렉트: `https://everyplan.site/login/success`
-- DB: `jdbc:mysql://localhost:3306/calendar`, 사용자 `root`, 비밀번호 `mysql`
-- Redis: `localhost:6379`
-- JPA: `ddl-auto=update`, `show-sql=true`
-- OAuth2 (Google): redirect-uri `https://api.everyplan.site/login/oauth2/code/{registrationId}`
-- JWT: 비밀키 및 만료시간 값이 파일에 기입됨
-- 로깅: `org.springframework.security`, `oauth2` 등 DEBUG
+- **Frontend 성공 리다이렉트**: `https://everyplan.site/login/success`
+- **DB**: `jdbc:mysql://localhost:3306/calendar`
+- **Redis**: `localhost:6379`
+- **JPA**: `ddl-auto=validate`, `show-sql=false` (보안 강화)
+- **OAuth2 (Google)**: redirect-uri `https://api.everyplan.site/login/oauth2/code/{registrationId}`
+- **JWT**: 비밀키 및 만료시간 값이 파일에 기입됨
+- **로깅**: `org.springframework.security`, `oauth2` 등 INFO 레벨
 
 Google OAuth 콘솔에 승인된 리디렉션 URI로 `https://api.everyplan.site/login/oauth2/code/google`를 등록하세요.
+
+---
+
+## 보안 설정
+
+### JWT 토큰 자동 갱신
+- 액세스 토큰이 곧 만료될 때 자동으로 갱신
+- 만료된 토큰으로 요청 시 자동 갱신 시도
+- 새로운 토큰은 `New-Access-Token` 헤더로 전송
+
+### CORS 보안
+- **개발 환경**: 모든 도메인 허용 (`*`)
+- **프로덕션 환경**: 특정 도메인만 허용
+  - `https://everyplan.site`
+  - `https://www.everyplan.site`
+  - `capacitor://localhost`
+  - `ionic://localhost`
+
+### 환경 변수 지원
+프로덕션 환경에서 환경 변수로 설정 가능:
+- `FRONTEND_SUCCESS_REDIRECT`
+- `DATABASE_URL`, `DATABASE_USERNAME`, `DATABASE_PASSWORD`
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
 
 ---
 
@@ -119,13 +144,6 @@ sudo apt-get install -y openjdk-17-jdk
 
 ---
 
-## 보안/CORS/문서화
-- CORS 허용 오리진: `https://everyplan.site`, 로컬 개발 오리진(`http://localhost:5173` 등)
-- Swagger UI: `https://api.everyplan.site/swagger-ui.html`
-- OpenAPI 서버: 운영 `https://api.everyplan.site`, 로컬 `http://localhost:8080`
-
----
-
 ## 테스트
 실행:
 ```bash
@@ -142,22 +160,36 @@ sudo apt-get install -y openjdk-17-jdk
 ---
 
 ## API 개요
-- 인증
-  - `GET /api/auth/login/google`: Google 로그인 시작(리다이렉트)
-  - `POST /api/auth/refresh`: Refresh Token으로 Access Token 갱신
-  - `GET /api/auth/status`: 서버 동작 확인
-- 일정
-  - `POST /api/schedule`: 생성
-  - `GET /api/schedule/{id}`: 단건 조회
-  - `PUT /api/schedule/{id}`: 수정
-  - `DELETE /api/schedule/{id}`: 삭제
-  - `GET /api/schedule`: 전체 조회
-  - `GET /api/schedule/today`: 오늘 일정
-  - `GET /api/schedule/date/{date}`: 특정 일자
-  - `GET /api/schedule/range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`: 날짜 범위
-  - `GET /api/schedule/completed`: 완료 일정
-  - `GET /api/schedule/in-progress`: 진행 일정
-  - `PUT /api/schedule/{id}/status?status=...`: 상태 변경
-  - `PUT /api/schedule/{id}/completion-rate?completionRate=0..100`: 완료율 변경
+### 인증
+- `GET /api/auth/login/google`: Google 로그인 시작(리다이렉트)
+- `POST /api/auth/refresh`: Refresh Token으로 Access Token 갱신
+- `GET /api/auth/status`: 서버 동작 확인
+
+### 일정
+- `POST /api/schedule`: 생성
+- `GET /api/schedule/{id}`: 단건 조회
+- `PUT /api/schedule/{id}`: 수정
+- `DELETE /api/schedule/{id}`: 삭제
+- `GET /api/schedule`: 전체 조회
+- `GET /api/schedule/today`: 오늘 일정
+- `GET /api/schedule/date/{date}`: 특정 일자
+- `GET /api/schedule/range?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD`: 날짜 범위
+- `GET /api/schedule/completed`: 완료 일정
+- `GET /api/schedule/in-progress`: 진행 일정
+- `PUT /api/schedule/{id}/status?status=...`: 상태 변경
+- `PUT /api/schedule/{id}/completion-rate?completionRate=0..100`: 완료율 변경
+
+### 알림
+- `GET /api/notifications/subscribe-public`: 공개 알림 구독
+- `GET /api/notifications/stream`: 알림 스트림
 
 인증이 필요한 API는 `Authorization: Bearer <ACCESS_TOKEN>` 헤더가 필요합니다.
+
+---
+
+## 개발 환경 접속 정보
+- **백엔드 API**: `http://localhost:8080`
+- **프론트엔드**: `http://localhost:5173`
+- **Swagger UI**: `http://localhost:8080/swagger-ui.html`
+- **MySQL**: `localhost:3306`
+- **Redis**: `localhost:6379`

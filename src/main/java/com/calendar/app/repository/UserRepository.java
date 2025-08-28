@@ -10,8 +10,5 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
 
-    // 이메일 중복 확인을 위한 메소드
-    boolean existsByEmail(String email);
-
     Optional<User> findByEmail(String email);
 }
