@@ -5,11 +5,14 @@ import com.calendar.app.dto.schedule.ScheduleRequest;
 import com.calendar.app.dto.schedule.ScheduleResponse;
 import com.calendar.app.entity.Schedule;
 import com.calendar.app.entity.User;
+import com.calendar.app.event.ScheduleCreatedEvent;
+import com.calendar.app.event.ScheduleUpdatedEvent;
 import com.calendar.app.exception.ScheduleNotFoundException;
 import com.calendar.app.exception.UnauthorizedAccessException;
 import com.calendar.app.repository.ScheduleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -24,6 +27,7 @@ public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
     private final SsePushService ssePushService;
+    private final ApplicationEventPublisher eventPublisher;
 
     // 공통 권한 검증 메서드
     private Schedule validateScheduleOwnership(User user, String scheduleId) {
@@ -60,6 +64,9 @@ public class ScheduleService {
 
         Schedule savedSchedule = scheduleRepository.save(schedule);
         log.debug("스케줄 생성 완료 - ID: {}", savedSchedule.getId());
+
+        // 스케줄 생성 이벤트 발행
+        eventPublisher.publishEvent(new ScheduleCreatedEvent(this, savedSchedule));
 
         return ScheduleResponse.from(savedSchedule);
     }
@@ -109,6 +116,9 @@ public class ScheduleService {
 
         Schedule updatedSchedule = scheduleRepository.save(schedule);
         log.debug("스케줄 수정 완료 - ID: {}", updatedSchedule.getId());
+
+        // 스케줄 수정 이벤트 발행
+        eventPublisher.publishEvent(new ScheduleUpdatedEvent(this, updatedSchedule));
 
         return ScheduleResponse.from(updatedSchedule);
     }
