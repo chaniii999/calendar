@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class AuthService {
 
-    private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisService redisService;
 

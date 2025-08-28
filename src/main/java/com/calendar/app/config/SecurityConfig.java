@@ -1,6 +1,7 @@
 package com.calendar.app.config;
 
 import com.calendar.app.service.JwtTokenProvider;
+import com.calendar.app.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 public class SecurityConfig {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final RedisService redisService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
     private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
@@ -32,11 +34,13 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
                 "https://everyplan.site",
                 "http://localhost:5173",
-                "http://127.0.0.1:5173"
+                "http://127.0.0.1:5173",
+                "capacitor://localhost",    // Capacitor 앱
+                "ionic://localhost"         // Ionic 앱
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "New-Access-Token"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
@@ -47,7 +51,7 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtTokenProvider);
+        return new JwtAuthenticationFilter(jwtTokenProvider, redisService);
     }
 
     // Spring Security 인증/인가 규칙 설정
@@ -94,3 +98,8 @@ public class SecurityConfig {
         return http.build();
     }
 }
+
+/*
+
+
+ */

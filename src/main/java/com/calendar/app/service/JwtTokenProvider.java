@@ -104,6 +104,46 @@ public class JwtTokenProvider {
         }
     }
 
+    /**
+     * 토큰이 만료되었는지 확인
+     * @param token JWT 토큰
+     * @return 만료 여부
+     */
+    public boolean isTokenExpired(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            
+            return claims.getExpiration().before(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return true; // 파싱 실패 시 만료된 것으로 간주
+        }
+    }
+
+    /**
+     * 토큰의 만료 시간까지 남은 시간(초) 반환
+     * @param token JWT 토큰
+     * @return 남은 시간(초), 만료되었으면 음수
+     */
+    public long getTokenExpirationTime(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            
+            Date expiration = claims.getExpiration();
+            Date now = new Date();
+            return (expiration.getTime() - now.getTime()) / 1000; // 초 단위로 반환
+        } catch (JwtException | IllegalArgumentException e) {
+            return -1; // 파싱 실패 시 -1 반환
+        }
+    }
+
     public long getAccessTokenExpirationTime() {
         return jwtProperties.getAccessTokenValidityInSeconds();
     }
@@ -128,44 +168,31 @@ public class JwtTokenProvider {
             return null;
         }
     }
-
-    // 토큰 만료 시간 확인
-    public boolean isTokenExpired(String token) {
-        try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            return claims.getExpiration().before(new Date());
-        } catch (JwtException | IllegalArgumentException e) {
-            return true; // 토큰이 유효하지 않으면 만료된 것으로 간주
-        }
-    }
-
-    // 토큰 만료까지 남은 시간 (초)
-    public long getTokenExpirationTime(String token) {
-        try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            Date expiration = claims.getExpiration();
-            Date now = new Date();
-
-            return Math.max(0, (expiration.getTime() - now.getTime()) / 1000);
-        } catch (JwtException | IllegalArgumentException e) {
-            return 0;
-        }
-    }
-
+    
     // 토큰 갱신 (액세스 토큰이 만료되었거나 곧 만료될 때)
     public String refreshAccessToken(String email) {
         log.debug("액세스 토큰 갱신 요청: {}", email);
         return createAccessToken(email);
+    }
+
+    /**
+     * 토큰이 곧 만료될 예정인지 확인 (기본값: 5분 전)
+     * @param token JWT 토큰
+     * @param minutesBefore 만료 몇 분 전부터 경고할지 (기본값: 5분)
+     * @return 곧 만료될 예정이면 true
+     */
+    public boolean isTokenExpiringSoon(String token, int minutesBefore) {
+        long remainingTime = getTokenExpirationTime(token);
+        return remainingTime > 0 && remainingTime <= minutesBefore * 60; // minutesBefore * 60초
+    }
+
+    /**
+     * 토큰이 곧 만료될 예정인지 확인 (5분 전)
+     * @param token JWT 토큰
+     * @return 곧 만료될 예정이면 true
+     */
+    public boolean isTokenExpiringSoon(String token) {
+        return isTokenExpiringSoon(token, 5); // 기본값: 5분 전
     }
 
 }
