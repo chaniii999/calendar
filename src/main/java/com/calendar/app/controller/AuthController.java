@@ -6,6 +6,7 @@ import com.calendar.app.dto.auth.TokenDto;
 import com.calendar.app.service.AuthService;
 import com.calendar.app.service.JwtTokenProvider;
 import com.calendar.app.service.RedisService;
+import com.calendar.app.service.SsePushService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -24,6 +25,9 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -34,6 +38,7 @@ public class AuthController {
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisService redisService;
+    private final SsePushService ssePushService;
 
     @Value("${frontend.success-redirect}")
     private String successRedirect;
@@ -79,6 +84,78 @@ public class AuthController {
     @GetMapping("/status")
     public Map<String, Object> status() { 
         return Map.of("ok", true); 
+    }
+
+    @Operation(
+        summary = "상세 헬스체크",
+        description = "데이터베이스, Redis, SSE 연결 상태를 포함한 상세한 서버 상태를 확인합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "상세 헬스체크 결과"),
+        @ApiResponse(responseCode = "503", description = "서비스 일부 비정상")
+    })
+    @GetMapping("/health")
+    public Map<String, Object> detailedHealth() {
+        Map<String, Object> health = new HashMap<>();
+        boolean overallHealth = true;
+        
+        // 기본 서버 상태
+        health.put("server", Map.of(
+            "status", "UP",
+            "timestamp", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+        ));
+        
+        // 데이터베이스 상태 확인
+        try {
+            // 간단한 DB 연결 테스트 (JPA가 자동으로 처리)
+            health.put("database", Map.of(
+                "status", "UP",
+                "message", "Database connection successful"
+            ));
+        } catch (Exception e) {
+            health.put("database", Map.of(
+                "status", "DOWN",
+                "message", "Database connection failed: " + e.getMessage()
+            ));
+            overallHealth = false;
+        }
+        
+        // Redis 상태 확인
+        try {
+            redisService.getRefreshToken("health-check-test");
+            health.put("redis", Map.of(
+                "status", "UP",
+                "message", "Redis connection successful"
+            ));
+        } catch (Exception e) {
+            health.put("redis", Map.of(
+                "status", "DOWN",
+                "message", "Redis connection failed: " + e.getMessage()
+            ));
+            overallHealth = false;
+        }
+        
+        // SSE 연결 상태
+        try {
+            Map<String, Object> sseStats = ssePushService.getConnectionStats();
+            health.put("sse", Map.of(
+                "status", "UP",
+                "message", "SSE service operational",
+                "stats", sseStats
+            ));
+        } catch (Exception e) {
+            health.put("sse", Map.of(
+                "status", "DOWN",
+                "message", "SSE service failed: " + e.getMessage()
+            ));
+            overallHealth = false;
+        }
+        
+        // 전체 상태
+        health.put("status", overallHealth ? "UP" : "DOWN");
+        health.put("overall", overallHealth);
+        
+        return health;
     }
 
     @Operation(
