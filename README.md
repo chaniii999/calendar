@@ -70,7 +70,7 @@ java -jar -Dspring.profiles.active=prod "$JAR"
 
 ## 운영 설정 요약 (`application-prod.yml`)
 - Frontend 성공 리다이렉트: `https://everyplan.site/login/success`
-- DB: `jdbc:mysql://localhost:3306/calendar`, 사용자 `root`, 비밀번호 `mysql`
+- DB: `jdbc:mysql://localhost:3306/calendar`
 - Redis: `localhost:6379`
 - JPA: `ddl-auto=update`, `show-sql=true`
 - OAuth2 (Google): redirect-uri `https://api.everyplan.site/login/oauth2/code/{registrationId}`
