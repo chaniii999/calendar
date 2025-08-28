@@ -11,7 +11,7 @@ https://docs.google.com/spreadsheets/d/1yqBxcY0RIi6PEaZf8qRdayLTLLIKmhkgy8WLyVhI
 - **일정**: 생성/단건 조회/수정/삭제, 날짜/범위/상태별 조회, 완료율/알림 설정
 - **보안**: JWT 토큰 자동 갱신, Redis 기반 세션 관리
 - **문서화**: Swagger UI 제공
-- **운영**: Actuator 헬스체크, Redis 연동
+- **운영**: Actuator 헬스체크, Redis 연동, SSE 실시간 알림
 
 ---
 
@@ -65,21 +65,75 @@ java -jar -Dspring.profiles.active=prod "$JAR"
 ```
 
 ### 4) 헬스 체크
-- `GET /api/auth/status` → `{ "ok": true }`
+- `GET /api/auth/status` → `{ "ok": true }` (기본 헬스체크)
+- `GET /api/auth/health` → 상세 헬스체크 (DB, Redis, SSE 상태 포함)
+- `GET /actuator/health` → Spring Boot Actuator 헬스체크
 
 ---
 
-
 ## 운영 설정 요약 (`application-prod.yml`)
 - **Frontend 성공 리다이렉트**: `https://everyplan.site/login/success`
-- **DB**: `jdbc:mysql://localhost:3306/calendar`
-- **Redis**: `localhost:6379`
+- **DB**: `jdbc:mysql://localhost:3306/calendar` (HikariCP 연결 풀 설정 포함)
+- **Redis**: `localhost:6379` (Lettuce 클라이언트 타임아웃 설정 포함)
 - **JPA**: `ddl-auto=validate`, `show-sql=false` (보안 강화)
 - **OAuth2 (Google)**: redirect-uri `https://api.everyplan.site/login/oauth2/code/{registrationId}`
 - **JWT**: 비밀키 및 만료시간 값이 파일에 기입됨
 - **로깅**: `org.springframework.security`, `oauth2` 등 INFO 레벨
+- **SSE**: 1시간 타임아웃, 15초 하트비트 주기
+- **서버**: Tomcat 스레드 풀 및 연결 타임아웃 설정
 
 Google OAuth 콘솔에 승인된 리디렉션 URI로 `https://api.everyplan.site/login/oauth2/code/google`를 등록하세요.
+
+---
+
+## EC2 Timeout 문제 해결
+
+### 🔧 **주요 개선사항**
+
+#### 1. **SSE (Server-Sent Events) 개선**
+- **타임아웃 단축**: 6시간 → 1시간 (프록시/로드밸런서 타임아웃 고려)
+- **하트비트 주기 단축**: 30초 → 15초 (연결 유지 강화)
+- **에러 처리 개선**: 연결 끊김 시 안전한 정리 로직 추가
+- **연결 상태 모니터링**: 실시간 연결 통계 제공
+
+#### 2. **데이터베이스 연결 개선**
+- **HikariCP 연결 풀 설정**: 최대 10개 연결, 최소 5개 유휴 연결
+- **연결 타임아웃**: 30초 연결 타임아웃, 60초 쿼리 타임아웃
+- **자동 재연결**: MySQL 연결 끊김 시 자동 재연결
+- **연결 유효성 검사**: `SELECT 1` 쿼리로 연결 상태 확인
+
+#### 3. **Redis 연결 개선**
+- **Lettuce 클라이언트 설정**: 5초 타임아웃, 자동 재연결
+- **연결 풀 설정**: 최대 8개 연결 관리
+- **명령어 타임아웃**: Redis 명령어별 5초 타임아웃
+- **종료 타임아웃**: 안전한 종료를 위한 5초 타임아웃
+
+#### 4. **스케줄 작업 개선**
+- **작업 타임아웃**: 알림 체크 30초, 상태 초기화 60초 타임아웃
+- **에러 처리**: 개별 작업 실패 시 전체 작업 중단 방지
+- **성능 모니터링**: 작업 실행 시간 추적 및 경고
+
+#### 5. **시스템 레벨 개선**
+- **JVM 메모리 설정**: 최소 512MB, 최대 1GB 힙 메모리
+- **GC 최적화**: G1GC 사용, 최대 200ms 일시정지 목표
+- **파일 디스크립터 제한**: 65,536개로 증가
+- **프로세스 제한**: 4,096개로 증가
+
+#### 6. **헬스체크 강화**
+- **상세 헬스체크**: DB, Redis, SSE 상태 개별 확인
+- **Spring Boot Actuator**: 표준 헬스체크 엔드포인트 제공
+- **실시간 모니터링**: 각 컴포넌트별 상태 정보 제공
+
+### 📊 **모니터링 엔드포인트**
+- `GET /api/auth/health` - 상세 헬스체크
+- `GET /actuator/health` - Spring Boot Actuator 헬스체크
+- `GET /actuator/metrics` - 애플리케이션 메트릭
+- `GET /actuator/info` - 애플리케이션 정보
+
+### 🔍 **로그 관리**
+- **파일 로그**: `logs/calendar-app.log`
+- **로그 로테이션**: 10MB 단위, 30일 보관
+- **로그 레벨**: 운영 환경 최적화된 로그 레벨 설정
 
 ---
 
@@ -123,6 +177,10 @@ sudo systemctl enable --now redis-server
 # (MySQL) DB/계정 예시
 sudo mysql -e "CREATE DATABASE IF NOT EXISTS calendar CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;"
 sudo mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'mysql';" || true
+
+# 로그 디렉토리 생성
+sudo mkdir -p /home/ubuntu/apps/logs
+sudo chown -R ubuntu:ubuntu /home/ubuntu/apps
 ```
 
 수동 배포/실행(대안):
@@ -164,6 +222,7 @@ sudo apt-get install -y openjdk-17-jdk
 - `GET /api/auth/login/google`: Google 로그인 시작(리다이렉트)
 - `POST /api/auth/refresh`: Refresh Token으로 Access Token 갱신
 - `GET /api/auth/status`: 서버 동작 확인
+- `GET /api/auth/health`: 상세 헬스체크
 
 ### 일정
 - `POST /api/schedule`: 생성
