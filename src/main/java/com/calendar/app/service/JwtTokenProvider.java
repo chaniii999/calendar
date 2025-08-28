@@ -44,36 +44,64 @@ public class JwtTokenProvider {
     }
 
     public String createAccessToken(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with email: " + email));
+        log.debug("Access Token 생성 시작: email={}", email);
+        
+        try {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> {
+                        log.error("Access Token 생성 실패: 사용자를 찾을 수 없음 - email={}", email);
+                        return new IllegalArgumentException("User not found with email: " + email);
+                    });
 
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("id", user.getId());
-        claims.put("email", user.getEmail());
-        claims.put("nickname", user.getNickname());
+            log.debug("사용자 조회 성공: userId={}, email={}, nickname={}", 
+                    user.getId(), user.getEmail(), user.getNickname());
 
-        Date now = new Date();
-        Date validity = new Date(now.getTime() + jwtProperties.getAccessTokenValidityInSeconds() * 1000);
+            Map<String, Object> claims = new HashMap<>();
+            claims.put("id", user.getId());
+            claims.put("email", user.getEmail());
+            claims.put("nickname", user.getNickname());
 
-        return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(email)
-                .setIssuedAt(now)
-                .setExpiration(validity)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+            Date now = new Date();
+            Date validity = new Date(now.getTime() + jwtProperties.getAccessTokenValidityInSeconds() * 1000);
+
+            String token = Jwts.builder()
+                    .setClaims(claims)
+                    .setSubject(email)
+                    .setIssuedAt(now)
+                    .setExpiration(validity)
+                    .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                    .compact();
+
+            log.debug("Access Token 생성 완료: email={}, tokenLength={}", email, token.length());
+            return token;
+            
+        } catch (Exception e) {
+            log.error("Access Token 생성 중 오류 발생: email={}, error={}", email, e.getMessage(), e);
+            throw e;
+        }
     }
 
     public String createRefreshToken(String email) {
-        Date now = new Date();
-        Date validity = new Date(now.getTime() + jwtProperties.getRefreshTokenValidityInSeconds() * 1000);
+        log.debug("Refresh Token 생성 시작: email={}", email);
+        
+        try {
+            Date now = new Date();
+            Date validity = new Date(now.getTime() + jwtProperties.getRefreshTokenValidityInSeconds() * 1000);
 
-        return Jwts.builder()
-                .setSubject(email)
-                .setIssuedAt(now)
-                .setExpiration(validity)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
-                .compact();
+            String token = Jwts.builder()
+                    .setSubject(email)
+                    .setIssuedAt(now)
+                    .setExpiration(validity)
+                    .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                    .compact();
+
+            log.debug("Refresh Token 생성 완료: email={}, tokenLength={}", email, token.length());
+            return token;
+            
+        } catch (Exception e) {
+            log.error("Refresh Token 생성 중 오류 발생: email={}, error={}", email, e.getMessage(), e);
+            throw e;
+        }
     }
 
     public Authentication getAuthentication(String token) {
