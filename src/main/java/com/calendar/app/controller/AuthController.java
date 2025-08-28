@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import com.calendar.app.repository.UserRepository;
+import com.calendar.app.entity.User;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,6 +41,7 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisService redisService;
     private final SsePushService ssePushService;
+    private final UserRepository userRepository;
 
     @Value("${frontend.success-redirect}")
     private String successRedirect;
@@ -175,5 +178,61 @@ public class AuthController {
     ) {
         TokenDto tokenDto = authService.refreshToken(request.getRefreshToken());
         return new CommonResponse<>(true, "토큰이 성공적으로 갱신되었습니다.", tokenDto);
+    }
+
+    @Operation(
+        summary = "토큰 생성 테스트 (개발용)",
+        description = "특정 이메일로 토큰을 생성하여 토큰 생성 과정을 테스트합니다. (개발 환경에서만 사용)"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "토큰 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "토큰 생성 실패")
+    })
+    @GetMapping("/debug/token-test")
+    public Map<String, Object> debugTokenTest(@RequestParam String email) {
+        Map<String, Object> result = new HashMap<>();
+        
+        try {
+            // 1. 사용자 조회 테스트
+            var userOpt = userRepository.findByEmail(email);
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                result.put("user", Map.of(
+                    "id", user.getId(),
+                    "email", user.getEmail(),
+                    "nickname", user.getNickname()
+                ));
+            } else {
+                result.put("user", "NOT_FOUND");
+                result.put("error", "사용자를 찾을 수 없습니다: " + email);
+                return result;
+            }
+            
+            // 2. Access Token 생성 테스트
+            String accessToken = jwtTokenProvider.createAccessToken(email);
+            result.put("accessToken", accessToken != null ? "생성됨 (" + accessToken.length() + "자)" : "생성실패");
+            
+            // 3. Refresh Token 생성 테스트
+            String refreshToken = jwtTokenProvider.createRefreshToken(email);
+            result.put("refreshToken", refreshToken != null ? "생성됨 (" + refreshToken.length() + "자)" : "생성실패");
+            
+            // 4. Redis 저장 테스트
+            try {
+                redisService.saveRefreshToken(email, refreshToken, 3600);
+                String savedToken = redisService.getRefreshToken(email);
+                result.put("redis", savedToken != null ? "저장/조회 성공" : "저장/조회 실패");
+            } catch (Exception e) {
+                result.put("redis", "Redis 오류: " + e.getMessage());
+            }
+            
+            result.put("success", true);
+            
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", e.getMessage());
+            result.put("errorType", e.getClass().getSimpleName());
+        }
+        
+        return result;
     }
 }
