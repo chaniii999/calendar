@@ -21,4 +21,7 @@ public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 	}
 }
 
+/*
+ * 401 에러 발생 시 JSON 응답을 반환하는 커스텀 AuthenticationEntryPoint
+ */
 

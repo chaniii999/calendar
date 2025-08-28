@@ -59,3 +59,15 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
 }
+
+/*
+OAuth2SuccessHandler.java
+OAuth2 로그인 성공 시 JWT 토큰을 생성하고, Redis에 리프레시 토큰을 저장한 후, 프론트엔드로 리다이렉트하는 핸들러입니다.
+
+onAuthenticationSuccess 메서드:
+- OIDC 사용자 정보에서 이메일과 이름을 추출합니다.
+- 이메일을 기준으로 사용자를 데이터베이스에서 조회하고, 없으면 새로 생성합니다.
+- JWT 액세스 토큰과 리프레시 토큰을 생성합니다.
+- 리프레시 토큰을 Redis에 저장합니다.
+- 프론트엔드로 리다이렉트하며, 액세스 토큰과 리프레시 토큰, 사용자 이름을 쿼리 파라미터로 전달합니다.
+ */

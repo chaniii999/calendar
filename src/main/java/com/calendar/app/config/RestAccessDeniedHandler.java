@@ -21,4 +21,7 @@ public class RestAccessDeniedHandler implements AccessDeniedHandler {
 	}
 }
 
+/*
+ * 403 에러 발생 시 JSON 응답을 반환하는 핸들러
+ */
 
