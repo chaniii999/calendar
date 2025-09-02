@@ -32,6 +32,14 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = resolveToken(request);
 
             if (StringUtils.hasText(token)) {
+                // 블랙리스트 검사 추가
+                if (redisService.isBlacklisted(token)) {
+                    log.warn("블랙리스트에 등록된 JWT 토큰 사용 시도: {}", requestURI);
+                    SecurityContextHolder.clearContext();
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
+                
                 if (jwtTokenProvider.validateToken(token)) {
                     Authentication authentication = jwtTokenProvider.getAuthentication(token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
