@@ -51,6 +51,18 @@ out/
 application-*.local.yml
 application-*.secrets.yml
 
+# 보안 강화: 환경변수 파일
+env.sh
+env.bat
+env-local.sh
+env-local.bat
+env-prod.sh
+env-prod.bat
+
+# 보안 강화: 보안 설정 파일
+application-secure.yml
+application-prod-secure.yml
+
 # OS / tooling dumps
 *.log
 hs_err_pid*
