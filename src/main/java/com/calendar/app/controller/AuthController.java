@@ -35,12 +35,20 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import jakarta.servlet.http.Cookie;
 
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 @Tag(name = "인증", description = "OAuth2 로그인 및 토큰 관리 API")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
     private final JwtTokenProvider jwtTokenProvider;
@@ -61,19 +69,32 @@ public class AuthController {
     })
     @GetMapping("/login/google")
     public void login(HttpServletResponse response, Authentication authentication) throws IOException {
-        // 이미 OIDC 인증된 세션이면 재인증 루프 방지: 바로 토큰 발급 후 프론트로 리다이렉트
+        // 이미 OIDC 인증된 세션이면 재인증 루프 방지: 세션 기반으로 안전하게 처리
         if (authentication != null && authentication.isAuthenticated() && authentication.getPrincipal() instanceof OidcUser oidc) {
             String email = oidc.getEmail();
             String name = oidc.getFullName();
 
-            String access = jwtTokenProvider.createAccessToken(email);
-            String refresh = jwtTokenProvider.createRefreshToken(email);
-            redisService.saveRefreshToken(email, refresh, jwtTokenProvider.getRefreshTokenExpirationTime());
+            // JWT 토큰 생성
+            String accessToken = jwtTokenProvider.createAccessToken(email);
+            String refreshToken = jwtTokenProvider.createRefreshToken(email);
+            
+            // Redis에 리프레시 토큰 저장
+            redisService.saveRefreshToken(email, refreshToken, jwtTokenProvider.getRefreshTokenExpirationTime());
 
+            // 세션에 토큰 저장 (URL 노출 방지)
+            HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest();
+            HttpSession session = request.getSession(true);
+            session.setAttribute("accessToken", accessToken);
+            session.setAttribute("refreshToken", refreshToken);
+            session.setAttribute("userEmail", email);
+            session.setAttribute("userName", name);
+            session.setAttribute("loginTime", System.currentTimeMillis());
+
+            // 보안: 사용자 이름만 URL에 전달 (토큰은 전달하지 않음)
             String nameParam = name != null ? java.net.URLEncoder.encode(name, java.nio.charset.StandardCharsets.UTF_8) : "";
-            String accessParam = java.net.URLEncoder.encode(access, java.nio.charset.StandardCharsets.UTF_8);
-            String refreshParam = java.net.URLEncoder.encode(refresh, java.nio.charset.StandardCharsets.UTF_8);
-            String redirectUrl = successRedirect + "?accessToken=" + accessParam + "&refreshToken=" + refreshParam + "&u=" + nameParam;
+            String redirectUrl = successRedirect + "?u=" + nameParam;
+            
+            log.info("OAuth2 재인증 완료, 세션 기반으로 프론트엔드로 리다이렉트: email={}", email);
             response.sendRedirect(redirectUrl);
             return;
         }
@@ -186,59 +207,143 @@ public class AuthController {
     }
 
     @Operation(
-        summary = "토큰 생성 테스트 (개발용)",
-        description = "특정 이메일로 토큰을 생성하여 토큰 생성 과정을 테스트합니다. (개발 환경에서만 사용)"
+        summary = "Google OAuth2 로그인 시작",
+        description = "Google OAuth2 로그인을 시작합니다. 브라우저에서 Google 로그인 페이지로 리다이렉트됩니다."
     )
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "토큰 생성 성공"),
-        @ApiResponse(responseCode = "400", description = "토큰 생성 실패")
+        @ApiResponse(responseCode = "302", description = "Google 로그인 페이지로 리다이렉트")
     })
-    @GetMapping("/debug/token-test")
-    public Map<String, Object> debugTokenTest(@RequestParam String email) {
-        Map<String, Object> result = new HashMap<>();
-        
-        try {
-            // 1. 사용자 조회 테스트
-            var userOpt = userRepository.findByEmail(email);
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                result.put("user", Map.of(
-                    "id", user.getId(),
-                    "email", user.getEmail(),
-                    "nickname", user.getNickname()
-                ));
-            } else {
-                result.put("user", "NOT_FOUND");
-                result.put("error", "사용자를 찾을 수 없습니다: " + email);
-                return result;
+    @GetMapping("/google-login")
+    public void googleLogin(HttpServletResponse response) throws IOException {
+        log.info("Google OAuth2 로그인 시작");
+        response.sendRedirect("/oauth2/authorization/google");
+    }
+
+    @Operation(
+        summary = "사용자 정보 조회",
+        description = "현재 인증된 사용자의 정보를 조회합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "사용자 정보 조회 성공"),
+        @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자")
+    })
+    @GetMapping("/me")
+    public ResponseEntity<Map<String, Object>> getCurrentUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(Map.of("error", "인증되지 않은 사용자"));
+        }
+
+        if (authentication.getPrincipal() instanceof OidcUser oidc) {
+            String email = oidc.getEmail();
+            User user = userRepository.findByEmail(email).orElse(null);
+            
+            if (user != null) {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("nickname", user.getNickname());
+                userInfo.put("createdAt", user.getCreatedAt());
+                
+                return ResponseEntity.ok(userInfo);
             }
-            
-            // 2. Access Token 생성 테스트
-            String accessToken = jwtTokenProvider.createAccessToken(email);
-            result.put("accessToken", accessToken != null ? "생성됨 (" + accessToken.length() + "자)" : "생성실패");
-            
-            // 3. Refresh Token 생성 테스트
-            String refreshToken = jwtTokenProvider.createRefreshToken(email);
-            result.put("refreshToken", refreshToken != null ? "생성됨 (" + refreshToken.length() + "자)" : "생성실패");
-            
-            // 4. Redis 저장 테스트
-            try {
-                redisService.saveRefreshToken(email, refreshToken, 3600);
-                String savedToken = redisService.getRefreshToken(email);
-                result.put("redis", savedToken != null ? "저장/조회 성공" : "저장/조회 실패");
-            } catch (Exception e) {
-                result.put("redis", "Redis 오류: " + e.getMessage());
-            }
-            
-            result.put("success", true);
-            
-        } catch (Exception e) {
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            result.put("errorType", e.getClass().getSimpleName());
         }
         
-        return result;
+        return ResponseEntity.status(404).body(Map.of("error", "사용자를 찾을 수 없습니다"));
+    }
+
+    @Operation(
+        summary = "로그아웃",
+        description = "현재 사용자를 로그아웃하고 모든 인증 정보를 제거합니다."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "로그아웃 성공"),
+        @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자")
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, Object>> logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            HttpSession session = request.getSession(false);
+            String userEmail = null;
+            String accessToken = null;
+            
+            if (session != null) {
+                userEmail = (String) session.getAttribute("userEmail");
+                accessToken = (String) session.getAttribute("accessToken");
+                
+                if (userEmail != null) {
+                    // Redis에서 리프레시 토큰 제거
+                    redisService.deleteRefreshToken(userEmail);
+                    
+                    // JWT 토큰을 블랙리스트에 추가 (선택사항)
+                    if (accessToken != null) {
+                        // 토큰 만료 시간까지 블랙리스트에 유지
+                        long expirationTime = jwtTokenProvider.getExpirationTimeFromToken(accessToken);
+                        long currentTime = System.currentTimeMillis();
+                        long timeToLive = Math.max(0, expirationTime - currentTime);
+                        
+                        if (timeToLive > 0) {
+                            redisService.addToBlacklist(accessToken, timeToLive);
+                            log.info("JWT 토큰을 블랙리스트에 추가: email={}, ttl={}ms", userEmail, timeToLive);
+                        }
+                    }
+                    
+                    log.info("사용자 로그아웃 처리 완료: email={}", userEmail);
+                }
+                
+                // 세션 완전 제거
+                session.invalidate();
+            }
+            
+            // 인증 관련 쿠키 제거
+            clearAuthCookies(response);
+            
+            // 로그아웃 성공 응답
+            Map<String, Object> responseBody = new HashMap<>();
+            responseBody.put("success", true);
+            responseBody.put("message", "로그아웃되었습니다");
+            responseBody.put("redirectUrl", "/"); // 프론트엔드에서 리다이렉트할 URL
+            
+            return ResponseEntity.ok(responseBody);
+            
+        } catch (Exception e) {
+            log.error("로그아웃 처리 중 오류 발생", e);
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "로그아웃 처리 중 오류가 발생했습니다"
+            ));
+        }
+    }
+
+    /**
+     * 인증 관련 쿠키를 제거합니다.
+     */
+    private void clearAuthCookies(HttpServletResponse response) {
+        // JSESSIONID 쿠키 제거
+        Cookie sessionCookie = new Cookie("JSESSIONID", "");
+        sessionCookie.setMaxAge(0);
+        sessionCookie.setPath("/");
+        response.addCookie(sessionCookie);
+        
+        // CSRF 토큰 쿠키 제거
+        Cookie csrfCookie = new Cookie("XSRF-TOKEN", "");
+        csrfCookie.setMaxAge(0);
+        csrfCookie.setPath("/");
+        response.addCookie(csrfCookie);
+        
+        // 기타 인증 관련 쿠키 제거
+        Cookie[] cookies = new Cookie[]{
+            new Cookie("remember-me", ""),
+            new Cookie("auth-token", ""),
+            new Cookie("user-info", "")
+        };
+        
+        for (Cookie cookie : cookies) {
+            cookie.setMaxAge(0);
+            cookie.setPath("/");
+            response.addCookie(cookie);
+        }
+        
+        log.debug("인증 관련 쿠키 제거 완료");
     }
 
     /**
@@ -257,5 +362,37 @@ public class AuthController {
         responseMap.put("parameterName", token.getParameterName());
         
         return ResponseEntity.ok(responseMap);
+    }
+
+    /**
+     * 세션에서 JWT 토큰을 안전하게 가져오는 엔드포인트
+     * 프론트엔드에서 로그인 후 토큰을 요청할 때 사용
+     */
+    @GetMapping("/tokens")
+    public ResponseEntity<Map<String, Object>> getTokens(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "세션이 없습니다"));
+        }
+
+        String accessToken = (String) session.getAttribute("accessToken");
+        String refreshToken = (String) session.getAttribute("refreshToken");
+        String userEmail = (String) session.getAttribute("userEmail");
+        String userName = (String) session.getAttribute("userName");
+
+        if (accessToken == null || refreshToken == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "토큰이 없습니다"));
+        }
+
+        // 보안: 토큰을 응답 본문에만 포함 (URL에 노출되지 않음)
+        Map<String, Object> response = new HashMap<>();
+        response.put("accessToken", accessToken);
+        response.put("refreshToken", refreshToken);
+        response.put("userEmail", userEmail);
+        response.put("userName", userName);
+        response.put("expiresIn", jwtTokenProvider.getAccessTokenExpirationTime());
+
+        log.info("세션에서 토큰 조회 완료: userEmail={}", userEmail);
+        return ResponseEntity.ok(response);
     }
 }
