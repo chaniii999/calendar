@@ -8,6 +8,8 @@ import com.calendar.app.service.JwtTokenProvider;
 import com.calendar.app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,6 +35,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/notifications")
+@AllArgsConstructor
 @Tag(name = "알림", description = "SSE 구독 및 푸시 알림")
 public class NotificationController {
 
@@ -40,14 +43,6 @@ public class NotificationController {
     private final ScheduleService scheduleService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
-
-    public NotificationController(SsePushService ssePushService, ScheduleService scheduleService,
-                                  JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
-        this.ssePushService = ssePushService;
-        this.scheduleService = scheduleService;
-        this.jwtTokenProvider = jwtTokenProvider;
-        this.userRepository = userRepository;
-    }
 
     @Operation(summary = "SSE 구독 (세션 기반)", description = "세션 기반 인증으로 실시간 알림을 구독합니다. 토큰 노출 없이 안전합니다.")
     @GetMapping("/subscribe")
