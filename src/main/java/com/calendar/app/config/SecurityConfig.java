@@ -11,6 +11,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -35,13 +36,15 @@ public class SecurityConfig {
                 "https://everyplan.site",
                 "http://localhost:5173",
                 "http://127.0.0.1:5173",
+                "http://localhost:3000",    // 추가 포트 지원
                 "capacitor://localhost",    // Capacitor 앱
                 "ionic://localhost"         // Ionic 앱
         ));
+        // 프록시를 통한 요청을 위해 localhost:5173에서의 쿠키 전송 허용
+        configuration.setAllowCredentials(true);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "New-Access-Token"));
-        configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(Arrays.asList("Content-Type", "New-Access-Token", "Set-Cookie"));
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -59,7 +62,21 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 활성화
-                .csrf(AbstractHttpConfigurer::disable) // POST 요청 허용을 위해 CSRF 비활성화
+                .csrf(csrf -> csrf
+                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    .ignoringRequestMatchers(
+                        "/api/auth/**",      // 인증 관련 엔드포인트
+                        "/oauth2/**",        // OAuth2 관련
+                        "/ping",             // 헬스체크
+                        "/actuator/**",      // 모니터링
+                        "/swagger-ui/**",    // Swagger UI
+                        "/v3/api-docs/**"    // API 문서
+                    )
+                ) // CSRF 보호 활성화 (인증이 필요하지 않은 엔드포인트만 제외)
+                .headers(headers -> headers
+                    .frameOptions().deny() // X-Frame-Options: DENY
+                    .contentTypeOptions() // X-Content-Type-Options: nosniff
+                ) // 기본 보안 헤더 추가
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)) // OAuth2 로그인에 필요한 경우 세션 사용
                 .exceptionHandling(ex -> ex
@@ -78,8 +95,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/debug/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-public").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/notifications/stream").permitAll()
+                        // SSE 엔드포인트 권한 설정
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe").authenticated() // 세션 기반 (인증 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-session").authenticated() // 세션 기반 (인증 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/tokens").permitAll() // 토큰 조회 (인증 필요)
+                        .requestMatchers(HttpMethod.POST, "/api/notifications/logout").authenticated() // 로그아웃 (인증 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-public").permitAll() // 토큰 기반 (호환성 유지)
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/stream").permitAll() // 토큰 기반 (호환성 유지)
                         // OAuth2 관련 엔드포인트 허용
                         .requestMatchers("/oauth2/**").permitAll()
                         .requestMatchers("/login/**").permitAll()
@@ -100,8 +122,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
-/*
-
-
- */
