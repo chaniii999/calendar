@@ -122,3 +122,15 @@ public class SecurityConfig {
         return http.build();
     }
 }
+
+/*
+SecurityConfig.java
+Spring Security 설정 클래스입니다. CORS, CSRF, 세션 관리, 예외 처리, 인증/인가 규칙, OAuth2 로그인 등을 설정합니다.
+- CORS 설정: 특정 출처에서의 요청을 허용하고, 쿠키 전송을 허용합니다.
+- CSRF 설정: 인증이 필요하지 않은 엔드포인트를 제외하고 CSRF 보호를 활성화합니다.
+- 세션 관리: OAuth2 로그인에 필요한 경우에만 세션을 생성합니다.
+- 예외 처리: 인증 실패 및 접근 거부 시 커스텀 핸들러를 사용합니다.
+- 인증/인가 규칙: 엔드포인트별로 접근 권한을 설정합니다.
+- OAuth2 로그인: 성공 및 실패 핸들러를 지정합니다.
+- JWT 인증 필터: UsernamePasswordAuthenticationFilter 앞에 JWT 인증 필터를 추가합니다.
+ */

@@ -120,3 +120,17 @@ public class ConnectionLeakPreventionConfig {
         }
     }
 }
+
+/*
+    * ConnectionLeakPreventionConfig.java
+    * 이 클래스는 HikariCP 커넥션 풀의 상태를 모니터링하고 관리하여 커넥션 누수를 방지하는 설정을 담당합니다.
+    * @Configuration 어노테이션은 이 클래스가 설정 클래임을 나타냅니다.
+    * DataSource 빈을 주입받아 커넥션 풀에 접근합니다.
+    * connectionPoolHealthCheck() 메서드는 애플리케이션 시작 시 커넥션 풀의 상태를 출력합니다.
+    * monitorConnectionPool() 메서드는 5분마다 커넥션 풀의 사용률을 확인하고, 사용률이 80% 이상일 경우 경고 메시지를 출력합니다.
+    * onConnectionLeakDetected() 메서드는 커넥션 누수가 감지될 때 호출되어 누수 횟수를 증가시키고 상태를 로깅합니다.
+    * forceConnectionPoolCleanup() 메서드는 매일 새벽 2시에 커넥션 풀을 정리하여 유휴 커넥션을 제거합니다.
+    * jdbcTemplate() 메서드는 JdbcTemplate 빈을 생성하여 데이터베이스 작업에 사용합니다.
+    * isConnectionHealthy() 메서드는 커넥션의 상태를 확인하는 유틸리티 메서드입니다.
+    * 이 설정을 통해 애플리케이션은 커넥션 누수를 효과적으로 감지하고 관리할 수 있습니다.
+ */

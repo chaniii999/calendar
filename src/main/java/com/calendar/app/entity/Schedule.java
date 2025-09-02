@@ -88,3 +88,21 @@ public class Schedule {
         this.updatedAt = LocalDateTime.now();
     }
 }
+
+/*
+    * Schedule.java
+    * 일정(Schedule) 엔티티 클래스
+    * JPA 어노테이션을 사용하여 데이터베이스 테이블과 매핑
+    * Lombok 어노테이션을 사용하여 보일러플레이트 코드 제거
+    * ULID를 기본 키로 사용하여 고유 식별자 생성
+    * User 엔티티와 다대일 관계 설정 (ManyToOne)
+    * 일정의 기본 정보, 날짜/시간, 알림 설정, 메타데이터 필드 포함
+    * @PrePersist, @PreUpdate 메서드를 통해 생성 및 수정 시간 자동 설정
+    * 인덱스를 통해 조회 성능 최적화 (user_id, schedule_date, created_at)
+    * @JsonIgnore를 사용하여 순환 참조 방지
+    *
+    * 개선사항:
+    * - ULID를 사용하여 분산 시스템에서 고유 식별자 충돌 방지
+    * - 인덱스 추가로 조회 성능 향상
+    * - 알림 발송 상태 필드 추가로 중복 알림 방지
+ */
