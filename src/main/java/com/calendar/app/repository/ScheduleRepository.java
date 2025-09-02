@@ -29,19 +29,6 @@ import java.util.List;
     // 사용자의 모든 스케줄 조회 (최신순)
     List<Schedule> findByUserOrderByScheduleDateDescStartTimeAsc(User user);
 
-        // 이번 주 스케줄 조회
-        @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :weekStart AND :weekEnd ORDER BY s.scheduleDate, s.startTime")
-        List<Schedule> findThisWeekSchedules(@Param("user") User user,
-                                             @Param("weekStart") LocalDate weekStart,
-                                             @Param("weekEnd") LocalDate weekEnd);
-    
-        // 이번 달 스케줄 조회
-        @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate BETWEEN :monthStart AND :monthEnd ORDER BY s.scheduleDate, s.startTime")
-        List<Schedule> findThisMonthSchedules(@Param("user") User user,
-                                              @Param("monthStart") LocalDate monthStart,
-                                              @Param("monthEnd") LocalDate monthEnd);
-    
-
     // 오늘의 스케줄 조회
     @Query("SELECT s FROM Schedule s WHERE s.user = :user AND s.scheduleDate = CURRENT_DATE ORDER BY s.startTime")
     List<Schedule> findTodaySchedules(@Param("user") User user);
