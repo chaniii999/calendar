@@ -223,4 +223,22 @@ public class JwtTokenProvider {
         return isTokenExpiringSoon(token, 5); // 기본값: 5분 전
     }
 
+    /**
+     * JWT 토큰에서 만료 시간을 추출합니다.
+     */
+    public long getExpirationTimeFromToken(String token) {
+        try {
+            Claims claims = Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+            
+            return claims.getExpiration().getTime();
+        } catch (Exception e) {
+            log.error("토큰에서 만료 시간 추출 실패: {}", e.getMessage());
+            return System.currentTimeMillis(); // 현재 시간 반환
+        }
+    }
+
 }
