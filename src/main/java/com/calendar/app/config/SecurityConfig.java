@@ -98,8 +98,8 @@ public class SecurityConfig {
                         // SSE 엔드포인트 권한 설정
                         .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe").authenticated() // 세션 기반 (인증 필요)
                         .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-session").authenticated() // 세션 기반 (인증 필요)
-                        .requestMatchers(HttpMethod.GET, "/api/notifications/tokens").permitAll() // 토큰 조회 (인증 필요)
-                        .requestMatchers(HttpMethod.POST, "/api/notifications/logout").authenticated() // 로그아웃 (인증 필요)
+                        .requestMatchers(HttpMethod.GET, "/api/auth/tokens").permitAll() // 토큰 조회 (인증 필요)
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated() // 로그아웃 (인증 필요)
                         .requestMatchers(HttpMethod.GET, "/api/notifications/subscribe-public").permitAll() // 토큰 기반 (호환성 유지)
                         .requestMatchers(HttpMethod.GET, "/api/notifications/stream").permitAll() // 토큰 기반 (호환성 유지)
                         // OAuth2 관련 엔드포인트 허용
