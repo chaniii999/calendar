@@ -30,6 +30,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import com.calendar.app.repository.UserRepository;
 import com.calendar.app.entity.User;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRepository;
+import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -234,5 +239,23 @@ public class AuthController {
         }
         
         return result;
+    }
+
+    /**
+     * CSRF 토큰 제공 엔드포인트
+     * 프론트엔드에서 CSRF 토큰을 요청할 때 사용
+     */
+    @GetMapping("/api/auth/csrf-token")
+    public ResponseEntity<Map<String, String>> getCsrfToken(HttpServletRequest request, HttpServletResponse response) {
+        CsrfTokenRepository tokenRepository = new HttpSessionCsrfTokenRepository();
+        CsrfToken token = tokenRepository.generateToken(request);
+        tokenRepository.saveToken(token, request, response);
+        
+        Map<String, String> responseMap = new HashMap<>();
+        responseMap.put("csrfToken", token.getToken());
+        responseMap.put("headerName", token.getHeaderName());
+        responseMap.put("parameterName", token.getParameterName());
+        
+        return ResponseEntity.ok(responseMap);
     }
 }
