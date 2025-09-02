@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import jakarta.servlet.http.HttpSession;
 
 @Slf4j
 @Component
@@ -46,7 +47,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 return;
             }
 
-            // 사용자 저장 또는 업데이트
+            // 사용자 조회 또는 생성
             User user = userRepository.findByEmail(email)
                     .map(u -> {
                         if (name != null && !name.isBlank()) {
@@ -65,9 +66,32 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                         return savedUser;
                     });
 
-            // 사용자 저장 후 다시 조회하여 최신 정보 확인
-            User savedUser = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("사용자 저장 후 조회 실패: " + email));
+            // 기존 세션 무효화 (보안 강화)
+            HttpSession oldSession = req.getSession(false);
+            if (oldSession != null) {
+                oldSession.invalidate();
+                log.debug("기존 세션 무효화 완료");
+            }
+
+            // 새로운 세션 생성
+            HttpSession session = req.getSession(true);
+            
+            // 세션 고정 공격 방지를 위한 세션 ID 재생성
+            req.changeSessionId();
+            
+            // 세션 보안 설정
+            session.setMaxInactiveInterval(3600); // 1시간
+            
+            // CSRF 토큰 생성 (추가 보안)
+            String csrfToken = generateCsrfToken();
+            session.setAttribute("csrfToken", csrfToken);
+
+            // 세션에 사용자 정보 저장 (SSE 세션 기반 인증을 위해)
+            session.setAttribute("userId", user.getId());
+            session.setAttribute("userEmail", user.getEmail());
+            session.setAttribute("userNickname", user.getNickname());
+            session.setAttribute("loginTime", System.currentTimeMillis());
+            log.debug("세션에 사용자 정보 저장: userId={}, email={}", user.getId(), email);
 
             log.debug("JWT 토큰 생성 시작: email={}", email);
 
@@ -76,25 +100,54 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             String refreshToken = jwtTokenProvider.createRefreshToken(email);
 
             log.debug("JWT 토큰 생성 완료: accessToken={}, refreshToken={}", 
-                    accessToken != null ? "생성됨" : "null", 
-                    refreshToken != null ? "생성됨" : "null");
+                     accessToken != null ? "생성됨" : "null", 
+                     refreshToken != null ? "생성됨" : "null");
 
-            // Redis에 refresh token 저장
+            // Redis에 리프레시 토큰 저장
             try {
                 redisService.saveRefreshToken(email, refreshToken, jwtTokenProvider.getRefreshTokenExpirationTime());
-                log.debug("Redis에 refresh token 저장 완료: email={}", email);
+                log.debug("Redis에 리프레시 토큰 저장 완료: email={}", email);
             } catch (Exception e) {
-                log.error("Redis에 refresh token 저장 실패: email={}, error={}", email, e.getMessage(), e);
-                // Redis 저장 실패해도 토큰은 발급
+                log.warn("Redis에 리프레시 토큰 저장 실패: email={}, error={}", email, e.getMessage());
+                // Redis 저장 실패 시에도 토큰 발급은 계속 진행
             }
 
-            // 프론트엔드로 리다이렉트
-            String nameParam = name != null ? URLEncoder.encode(name, StandardCharsets.UTF_8) : "";
-            String accessParam = URLEncoder.encode(accessToken, StandardCharsets.UTF_8);
-            String refreshParam = URLEncoder.encode(refreshToken, StandardCharsets.UTF_8);
-            String redirectUrl = successRedirect + "?accessToken=" + accessParam + "&refreshToken=" + refreshParam + "&u=" + nameParam;
+            // 세션에 토큰 정보 저장 (보안을 위해 URL 파라미터로 전달하지 않음)
+            session.setAttribute("accessToken", accessToken);
+            session.setAttribute("refreshToken", refreshToken);
+            session.setAttribute("userName", name);
             
-            log.info("OAuth2 로그인 완료, 프론트엔드로 리다이렉트: email={}, redirectUrl={}", email, redirectUrl);
+            // 세션 쿠키 설정
+            setSessionCookie(res, session);
+            
+            // 세션 설정 완료 로그
+            log.info("=== 세션 설정 완료 ===");
+            log.info("세션 ID: {}", session.getId());
+            log.info("세션 생성 시간: {}", session.getCreationTime());
+            log.info("세션 유효 시간: {}", session.getMaxInactiveInterval());
+            log.info("세션에 저장된 속성들:");
+            log.info("  - userId: {}", session.getAttribute("userId"));
+            log.info("  - userEmail: {}", session.getAttribute("userEmail"));
+            log.info("  - userNickname: {}", session.getAttribute("userNickname"));
+            log.info("  - accessToken: {}", session.getAttribute("accessToken") != null ? "설정됨" : "null");
+            log.info("  - refreshToken: {}", session.getAttribute("refreshToken") != null ? "설정됨" : "null");
+            log.info("  - userName: {}", session.getAttribute("userName"));
+            log.info("  - loginTime: {}", session.getAttribute("loginTime"));
+            log.info("  - csrfToken: {}", session.getAttribute("csrfToken") != null ? "설정됨" : "null");
+            log.info("=====================");
+            
+            // 세션 쿠키 설정 확인
+            String setCookieHeader = res.getHeader("Set-Cookie");
+            log.info("최종 Set-Cookie 헤더: {}", setCookieHeader);
+            
+            // 보안 헤더 설정
+            setSecurityHeaders(res);
+            
+            // 프론트엔드로 리다이렉트 (토큰 없이, 사용자 이름만 전달)
+            String nameParam = name != null ? URLEncoder.encode(name, StandardCharsets.UTF_8) : "";
+            String redirectUrl = successRedirect + "?u=" + nameParam;
+            
+            log.info("OAuth2 로그인 완료, 세션 기반으로 프론트엔드로 리다이렉트: email={}, redirectUrl={}", email, redirectUrl);
             res.sendRedirect(redirectUrl);
 
         } catch (Exception e) {
@@ -112,8 +165,44 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             log.error("에러 페이지 리다이렉트 실패: {}", e.getMessage(), e);
         }
     }
-}
 
+    private String generateCsrfToken() {
+        // 실제 CSRF 토큰 생성 로직 구현
+        // 예: 랜덤 문자열 생성 또는 세션에 저장
+        return "dummyCsrfToken"; // 임시 토큰
+    }
+
+    private void setSessionCookie(HttpServletResponse response, HttpSession session) {
+        // 세션 쿠키를 명시적으로 설정
+        String sessionId = session.getId();
+        
+        // 개발 환경에서는 SameSite=None 사용 (크로스 사이트 쿠키 문제 해결)
+        // 프록시를 통한 요청이므로 SameSite=None으로 설정
+        String cookieValue = "JSESSIONID=" + sessionId + "; Path=/; HttpOnly=false; SameSite=None; Max-Age=1800";
+        
+        response.addHeader("Set-Cookie", cookieValue);
+        
+        log.info("세션 쿠키 설정 완료: {}", cookieValue);
+        
+        // 추가 디버깅: 응답 헤더 확인
+        String setCookieHeader = response.getHeader("Set-Cookie");
+        log.info("응답 Set-Cookie 헤더: {}", setCookieHeader);
+    }
+
+    private void setSecurityHeaders(HttpServletResponse response) {
+        // 보안 헤더 설정 로직
+        response.addHeader("X-Content-Type-Options", "nosniff");
+        response.addHeader("X-XSS-Protection", "1; mode=block");
+        response.addHeader("X-Frame-Options", "DENY");
+        response.addHeader("Referrer-Policy", "no-referrer-when-downgrade");
+        response.addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.addHeader("Pragma", "no-cache");
+        
+        // 개발 환경에서는 일부 보안 헤더 제외 (localhost에서 HTTPS 없이 테스트 가능)
+        // Content-Security-Policy와 Strict-Transport-Security는 프로덕션에서만 설정
+        log.debug("보안 헤더 설정 완료");
+    }
+}
 /*
 OAuth2SuccessHandler.java
 OAuth2 로그인 성공 시 JWT 토큰을 생성하고, Redis에 리프레시 토큰을 저장한 후, 프론트엔드로 리다이렉트하는 핸들러입니다.
